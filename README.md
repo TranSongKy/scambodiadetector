@@ -30,6 +30,14 @@ models/                          File model khi chạy (không commit)
 
 ## Chạy test
 
+Một lệnh cho tất cả (build, test .NET, ruff, test Python, dataset, extension):
+
+```bash
+./scripts/check_all.sh
+```
+
+Hoặc từng phần:
+
 ```bash
 dotnet build
 dotnet test
@@ -184,7 +192,8 @@ docker compose --profile bot up --build # thêm bot
 - Image chạy bằng user không phải root, cổng `8080`.
 - Model mount vào `/models` (chỉ đọc). Đổi đường dẫn bằng biến môi trường `OnnxModel__ModelPath`, `OnnxModel__VocabularyPath`, `OnnxModel__BpeCodesPath`.
 - Đổi ngưỡng bằng `Classification__ScamThreshold` (trong khoảng (0, 1], sai thì app dừng khi khởi động).
-- Dùng `/health` làm readiness probe.
+- Dùng `/health` làm readiness probe (kiểm tra model và, khi có cấu hình, database).
+- Giới hạn request theo IP: `RateLimiting__PermitLimit` (mặc định 30) mỗi `RateLimiting__WindowSeconds` (60) cho `/api/v1/classifications` và `/api/v1/reports`, vượt thì trả 429. Khi chạy sau reverse proxy tin cậy (nginx, load balancer), đặt `RateLimiting__TrustForwardedHeaders=true` để lấy IP thật từ `X-Forwarded-For`; không bật khi API lộ trực tiếp ra internet.
 - Container chạy bằng UID 1654 (`app`); file trong `models/` phải đọc được bởi user này (`chmod a+r models/*`).
 - Không commit `.env`; token và mật khẩu chỉ nằm trong biến môi trường hoặc secret store của nền tảng deploy.
 

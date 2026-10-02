@@ -2,12 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ScamDetector.Core.Reports;
+using ScamDetector.Infrastructure.HealthChecks;
 using ScamDetector.Infrastructure.Persistence;
 
 namespace ScamDetector.Infrastructure.DependencyInjection;
 
 public static class PersistenceServiceCollectionExtensions
 {
+    private const string DatabaseHealthCheckName = "database";
+
     public static IServiceCollection AddScamDetectorPersistence(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
@@ -23,6 +26,7 @@ public static class PersistenceServiceCollectionExtensions
 
         services.AddDbContext<ScamDetectorDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IMessageReportRepository, EfMessageReportRepository>();
+        services.AddHealthChecks().AddCheck<DatabaseHealthCheck>(DatabaseHealthCheckName);
         return services;
     }
 

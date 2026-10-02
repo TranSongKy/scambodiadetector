@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using ScamDetector.Api.ErrorHandling;
+using ScamDetector.Api.RateLimiting;
 using ScamDetector.Core.Classification;
 
 namespace ScamDetector.Api.Classifications;
@@ -10,7 +11,7 @@ public static class ClassificationEndpoints
 
     public static IEndpointRouteBuilder MapClassificationEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost(RoutePrefix, ClassifyAsync);
+        endpoints.MapPost(RoutePrefix, ClassifyAsync).RequireRateLimiting(RateLimitOptions.PolicyName);
         return endpoints;
     }
 

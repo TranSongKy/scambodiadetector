@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using ScamDetector.Api.ErrorHandling;
+using ScamDetector.Api.RateLimiting;
 using ScamDetector.Core.Classification;
 using ScamDetector.Core.Reports;
 
@@ -11,7 +12,7 @@ public static class ReportEndpoints
 
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost(RoutePrefix, CreateAsync);
+        endpoints.MapPost(RoutePrefix, CreateAsync).RequireRateLimiting(RateLimitOptions.PolicyName);
         return endpoints;
     }
 
