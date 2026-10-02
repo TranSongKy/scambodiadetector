@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kiểm tra tin nhắn lừa đảo</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Kiểm tra tin nhắn lừa đảo</h1>
+      <a id="open-options" href="#">Cài đặt</a>
+    </header>
+
+    <main>
+      <label for="message" class="field-label">Nội dung tin nhắn</label>
+      <textarea id="message" rows="7" placeholder="Dán nội dung tin nhắn, hoặc dán ảnh chụp màn hình (Ctrl+V) vào đây"></textarea>
+
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-describedby="drop-hint">
+        <p id="drop-hint">🖼️ Dán ảnh chụp màn hình (Ctrl+V), kéo thả ảnh vào đây, hoặc <span class="link">chọn ảnh</span></p>
+        <input id="file-input" type="file" accept="image/*" hidden />
+      </div>
+
+      <div id="image-preview" class="image-preview" hidden>
+        <img id="preview-image" alt="Ảnh chụp màn hình đã dán" />
+        <button id="remove-image" type="button" class="secondary">Bỏ ảnh</button>
+      </div>
+
+      <p id="ocr-status" class="status" role="status" hidden></p>
+      <progress id="ocr-progress" max="1" value="0" hidden></progress>
+
+      <button id="check" type="button" class="primary">Kiểm tra</button>
+
+      <p id="error" class="error" role="alert" hidden></p>
+
+      <section id="result" class="result" hidden aria-live="polite">
+        <p id="verdict" class="verdict"></p>
+        <p id="confidence"></p>
+        <ul id="reasons"></ul>
+        <p id="advice" class="advice" hidden></p>
+        <div id="report" class="report">
+          <p id="report-prompt"></p>
+          <div id="report-buttons" class="report-buttons"></div>
+          <p id="report-status" role="status"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p class="privacy">Ảnh được đọc ngay trên máy bạn và không gửi đi. Chỉ phần chữ được gửi tới máy chủ để kiểm tra; số điện thoại, tài khoản, OTP, link được ẩn trước khi lưu.</p>
+    </footer>
+
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

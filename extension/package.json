@@ -3,6 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "build": "node scripts/vendor.mjs",
+    "test": "node --test tests/*.test.js",
+    "package": "npm run build && cd .. && rm -f scambodia-extension.zip && cd extension && zip -qr ../scambodia-extension.zip manifest.json src vendor",
+    "test:e2e": "npm run build && node --test --test-concurrency=1 e2e/*.e2e.mjs"
+  },
+  "dependencies": {
+    "@tesseract.js-data/vie": "1.0.0",
+    "tesseract.js": "7.0.0"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
   }
 }

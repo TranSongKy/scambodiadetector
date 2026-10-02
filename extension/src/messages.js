@@ -27,11 +27,17 @@ export const ERROR_MESSAGES = Object.freeze({
   unexpected: "Có lỗi xảy ra, bạn thử lại sau nhé.",
   invalidApiUrl: "Địa chỉ API phải dùng https:// (chỉ cho phép http:// với localhost).",
   timeout: "Máy chủ phản hồi quá lâu, bạn thử lại sau nhé.",
+  notAnImage: "Tệp này không phải ảnh. Hãy dán ảnh chụp màn hình (PNG, JPG...).",
+  imageTooLarge: "Ảnh quá lớn (tối đa 10 MB).",
+  ocrFailed: "Không đọc được chữ trong ảnh. Hãy thử ảnh rõ hơn hoặc gõ nội dung vào ô.",
+  ocrEmpty: "Không tìm thấy chữ nào trong ảnh.",
 });
 
 export const UI_TEXT = Object.freeze({
   confidenceLabel: "Độ tin cậy",
   contextMenuTitle: "Kiểm tra tin nhắn này có lừa đảo không",
+  ocrRunning: "Đang đọc chữ trong ảnh…",
+  ocrDone: "Đã đọc chữ từ ảnh. Kiểm tra lại nội dung rồi bấm Kiểm tra.",
   saved: "Đã lưu.",
   permissionDenied: "Cần cấp quyền truy cập địa chỉ này để kiểm tra tin nhắn.",
   reportPrompt: "Kết quả chưa đúng? Cho mình biết tin này thực sự là:",

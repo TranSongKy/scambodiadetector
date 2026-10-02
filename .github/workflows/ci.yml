@@ -100,8 +100,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
       - run: npm test
-      - run: zip -r ../scambodia-extension.zip manifest.json src
+      - run: npx playwright install --with-deps chromium
+      - name: End-to-end test (side panel, OCR, API calls)
+        run: npm run test:e2e
+      - run: npm run package
       - uses: actions/upload-artifact@v4
         with:
           name: chrome-extension

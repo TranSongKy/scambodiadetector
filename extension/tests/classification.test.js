@@ -148,7 +148,9 @@ test("manifest is valid MV3 and points to existing files", () => {
   const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8"));
 
   assert.equal(manifest.manifest_version, 3);
-  for (const path of [manifest.background.service_worker, manifest.action.default_popup, manifest.options_page]) {
+  assert.ok(manifest.permissions.includes("sidePanel"));
+  assert.match(manifest.content_security_policy.extension_pages, /'wasm-unsafe-eval'/);
+  for (const path of [manifest.background.service_worker, manifest.side_panel.default_path, manifest.options_page]) {
     assert.doesNotThrow(() => readFileSync(new URL(`../${path}`, import.meta.url)), path);
   }
 });

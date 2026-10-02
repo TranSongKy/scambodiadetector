@@ -167,12 +167,30 @@ Người dùng gửi hoặc forward tin nhắn nghi ngờ cho bot, bot trả l�
 
 ## Chrome extension
 
-1. Mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `extension/`.
-2. Mặc định gọi API ở `http://localhost:8080`. Đổi trong **Cài đặt** của extension; Chrome sẽ hỏi quyền truy cập địa chỉ mới.
-3. Dùng: bấm biểu tượng extension và dán tin nhắn, hoặc bôi đen tin nhắn trên trang web → chuột phải → **Kiểm tra tin nhắn này có lừa đảo không**. Dưới kết quả có nút báo lại nhãn đúng (gửi tới `/api/v1/reports`).
-4. Chỉ chấp nhận địa chỉ `https://`, hoặc `http://` với localhost.
+Bấm biểu tượng extension để mở **bảng kiểm tra bên cạnh trang** (side panel). Trong bảng có thể:
 
-Test: `cd extension && npm test` (Node 22, không cần cài gói). CI đóng gói `scambodia-extension.zip` để tải lên Chrome Web Store.
+- **Dán nội dung** tin nhắn vào ô rồi bấm **Kiểm tra**.
+- **Dán ảnh chụp màn hình** (Ctrl+V), kéo thả ảnh, hoặc chọn file. Extension đọc chữ trong ảnh ngay trên máy (OCR tiếng Việt, cả ảnh nền tối), điền vào ô để người dùng sửa nếu cần, rồi mới gửi **phần chữ** lên API. Ảnh không bao giờ rời khỏi máy.
+- Trên trang web bất kỳ: **bôi đen** tin nhắn → chuột phải → **Kiểm tra tin nhắn này có lừa đảo không**, bảng bên cạnh mở ra và tự kiểm tra.
+- Dưới kết quả có nút báo lại nhãn đúng (gửi tới `/api/v1/reports`).
+
+Cài đặt khi phát triển:
+
+```bash
+cd extension
+npm ci
+npm run build        # chép Tesseract (OCR) và dữ liệu tiếng Việt vào extension/vendor/
+```
+
+Mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `extension/`. Mặc định gọi API ở `http://localhost:8080`; đổi trong **Cài đặt** của extension (chỉ chấp nhận `https://`, hoặc `http://` với localhost).
+
+Test:
+
+```bash
+npm test             # unit test (Node 22)
+npm run test:e2e     # mở Chromium thật với extension: dán ảnh, OCR, gọi API giả lập, báo cáo
+npm run package      # tạo scambodia-extension.zip để tải lên Chrome Web Store
+```
 
 ## Database
 

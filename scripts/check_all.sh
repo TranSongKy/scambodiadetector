@@ -29,6 +29,6 @@ else
 fi
 
 step "Chrome extension"
-(cd extension && node --test)
+(cd extension && npm ci --silent && npm test)
 
 printf '\nTất cả kiểm tra đều đạt.\n'

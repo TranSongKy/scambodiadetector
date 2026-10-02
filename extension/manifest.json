@@ -1,19 +1,33 @@
 {
   "manifest_version": 3,
   "name": "Scambodia Detector",
-  "description": "Kiểm tra tin nhắn tiếng Việt có dấu hiệu lừa đảo hay không.",
-  "version": "0.1.0",
+  "description": "Kiểm tra tin nhắn hoặc ảnh chụp màn hình tiếng Việt có dấu hiệu lừa đảo hay không.",
+  "version": "0.2.0",
   "minimum_chrome_version": "127",
-  "permissions": ["contextMenus", "storage"],
-  "host_permissions": ["http://localhost:8080/*"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "http://localhost:8080/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
   },
   "action": {
-    "default_title": "Kiểm tra tin nhắn lừa đảo",
-    "default_popup": "src/popup.html"
+    "default_title": "Mở bảng kiểm tra tin nhắn lừa đảo"
   },
-  "options_page": "src/options.html"
+  "side_panel": {
+    "default_path": "src/panel.html"
+  },
+  "options_page": "src/options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
 }
