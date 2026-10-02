@@ -113,3 +113,9 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Lý do:** Người gán nhãn không cần quyền truy cập SQL Server; script `export_reports.py` chỉ dùng thư viện chuẩn Python (không thêm `pyodbc`).
 - **Đánh đổi:** Một key dùng chung, chưa phân quyền theo người. Đủ cho nhóm nhỏ; nếu mở rộng thì thay bằng xác thực thật (OIDC).
 - **SQLite trong test:** SQLite không so sánh được `DateTimeOffset`, nên `ScamDetectorDbContext` chỉ bật `DateTimeOffsetToBinaryConverter` khi provider là SQLite; model SQL Server và migration không đổi (`MigrationTests` kiểm tra).
+
+## 017. Kiểm chứng tokenizer .NET với HuggingFace
+
+- **Bối cảnh:** Quyết định 001 đánh đổi bằng việc tự viết tokenizer; lệch một id là model cho kết quả sai mà không báo lỗi.
+- **Đã kiểm chứng:** Train một bộ BPE 1500 merge (cùng kiểu fastBPE) trên văn bản tiếng Việt ngẫu nhiên, so `PhobertTokenizer` của `transformers` với `PhoBertTokenizer` .NET trên 3005 câu (gồm chữ hoa, emoji, placeholder, chuỗi rỗng, câu dài bị cắt ở 256 token): khớp 3005/3005.
+- **Trong CI:** Job `tokenizer-parity` tải tokenizer thật của `vinai/phobert-base-v2`, sinh `tokenizer-golden.json` bằng `scripts/make_tokenizer_golden.py` (chỉ cần `transformers`, không cần `torch`) rồi chạy `scripts/VerifyTokenizer.cs`. Mọi thay đổi ở `Tokenization/` đều được kiểm tra với vocab thật.

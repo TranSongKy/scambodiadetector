@@ -54,6 +54,23 @@ jobs:
           --project src/ScamDetector.Infrastructure
           --connection "Server=localhost,1433;Database=ScamDetector;User Id=sa;Password=Ci-Only-Password-123;TrustServerCertificate=True"
 
+  tokenizer-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: pip install "transformers>=4.45"
+      - name: Generate golden ids with the real PhoBERT tokenizer
+        working-directory: scripts
+        run: python make_tokenizer_golden.py "$RUNNER_TEMP/phobert"
+      - name: Compare with the .NET tokenizer
+        run: dotnet run scripts/VerifyTokenizer.cs -- "$RUNNER_TEMP/phobert"
+
   python:
     runs-on: ubuntu-latest
     steps:
