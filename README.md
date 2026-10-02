@@ -15,7 +15,7 @@ src/ScamDetector.Core            Domain: phân loại, ngưỡng scam, chuẩn h
 src/ScamDetector.Infrastructure  Tokenizer PhoBERT (fastBPE), model ONNX
 src/ScamDetector.Api             Minimal API: POST /api/v1/classifications, /health
 tests/                           xUnit: Core, Infrastructure (model ONNX fixture), Api (integration)
-scripts/                         validate_dataset.py, split_dataset.py và test Python
+scripts/                         masking.py, anonymize.py, validate_dataset.py, split_dataset.py và test Python
 data/processed/dataset.csv       Dữ liệu đã ẩn danh (data/raw/ không bao giờ commit)
 models/                          File model khi chạy (không commit)
 ```
@@ -35,6 +35,17 @@ python -m unittest discover -s scripts/tests -t .
 ruff check . && ruff format --check .
 python scripts/validate_dataset.py data/processed/dataset.csv
 ```
+
+## Quy trình dữ liệu
+
+```bash
+python scripts/anonymize.py data/raw/batch.csv data/processed/new_batch.csv --start-id 1
+# kiểm tra tay các id được báo có thể chứa tên người, gộp vào data/processed/dataset.csv
+python scripts/validate_dataset.py data/processed/dataset.csv
+python scripts/split_dataset.py data/processed/dataset.csv data/processed/splits
+```
+
+`anonymize.py` không in nội dung tin nhắn, chỉ in id và số lượng. Tập test trong `splits/test.csv` cố định sau lần chia đầu.
 
 ## Chạy API ở máy
 

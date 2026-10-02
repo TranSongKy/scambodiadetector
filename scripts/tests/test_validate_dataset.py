@@ -2,8 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from validate_dataset import find_pii, has_url, validate_dataset
+
 from scripts.tests.dataset_rows import make_balanced_rows, make_row, write_dataset
-from scripts.validate_dataset import find_pii, has_url, validate_dataset
 
 
 class FindPiiTests(unittest.TestCase):
@@ -23,7 +24,7 @@ class FindPiiTests(unittest.TestCase):
         self.assertIn("otp", find_pii("Mã xác minh 8472 nhé"))
 
     def test_card_number_is_detected(self) -> None:
-        self.assertIn("card_number", find_pii("The 1234 5678 9012 3456"))
+        self.assertIn("account", find_pii("The 1234 5678 9012 3456"))
 
     def test_raw_url_is_detected(self) -> None:
         self.assertIn("url", find_pii("Vao vcb.vip/x ngay"))

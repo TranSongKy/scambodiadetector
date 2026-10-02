@@ -2,7 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.split_dataset import SplitError, read_rows, split_dataset
+from split_dataset import SplitError, read_rows, split_dataset
+
 from scripts.tests.dataset_rows import FIELDNAMES, make_balanced_rows, make_row
 
 SPLIT_FILES = ("train.csv", "val.csv", "test.csv")

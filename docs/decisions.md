@@ -51,7 +51,8 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 
 - **Bối cảnh:** Dữ liệu train đã ẩn danh (`<URL>`, `<PHONE>`...), còn tin nhắn thật khi suy luận thì chưa. Nếu không che, model thấy phân phối khác lúc train.
 - **Lựa chọn:** `ModelInputMasker` (Core) che theo thứ tự email → URL → OTP → CCCD/CMND → điện thoại → số tài khoản. OTP và `<ID>` chỉ che khi có từ khóa đứng trước (`otp`, `mã xác nhận`, `cccd`...). URL inspector vẫn nhận text chưa che để phân tích tên miền.
-- **Ràng buộc:** `scripts/validate_dataset.py` và `scripts/anonymize.py` phải dùng cùng regex. Khi sửa một bên phải sửa bên kia và chạy lại test.
+- **Một nguồn mỗi ngôn ngữ:** Phía Python chỉ có `scripts/masking.py`; `anonymize.py` dùng nó để che, `validate_dataset.py` dùng nó để dò ("masker còn đổi được text" nghĩa là còn PII). Phía C# là `ModelInputMasker`.
+- **Kiểm tra chéo:** `tests/shared/masking-cases.json` được cả `SharedMaskingCasesTests` (C#) và `test_regex_parity.py` (Python) chạy. Sửa regex ở một bên thì phải sửa bên kia và thêm case vào file này.
 - **Chưa làm:** `<NAME>` không che tự động khi suy luận; dữ liệu train nên hạn chế `<NAME>` (xem `docs/data-schema.md`).
 
 ## 009. Lỗi request ở môi trường Development

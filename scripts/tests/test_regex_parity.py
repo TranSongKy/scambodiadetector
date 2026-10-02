@@ -1,11 +1,13 @@
+import json
 import re
 import unittest
 from pathlib import Path
 
-from scripts.validate_dataset import URL_TOP_LEVEL_DOMAINS
+from masking import URL_TOP_LEVEL_DOMAINS, mask
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 URL_EXTRACTOR_PATH = REPOSITORY_ROOT / "src" / "ScamDetector.Core" / "Urls" / "UrlExtractor.cs"
+MASKING_CASES_PATH = REPOSITORY_ROOT / "tests" / "shared" / "masking-cases.json"
 CSHARP_TLD_GROUP = re.compile(r"\\\.\)\+\(\?:([a-z|]+)\)")
 
 
@@ -17,6 +19,13 @@ class RegexParityTests(unittest.TestCase):
         self.assertIsNotNone(match, "Không tìm thấy danh sách TLD trong UrlExtractor.cs")
         assert match is not None
         self.assertEqual(set(match.group(1).split("|")), set(URL_TOP_LEVEL_DOMAINS.split("|")))
+
+    def test_python_mask_matches_shared_cases(self) -> None:
+        cases = json.loads(MASKING_CASES_PATH.read_text(encoding="utf-8"))
+
+        for case in cases:
+            with self.subTest(text=case["input"]):
+                self.assertEqual(case["expected"], mask(case["input"]))
 
 
 if __name__ == "__main__":

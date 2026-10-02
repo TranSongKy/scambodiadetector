@@ -1,0 +1,98 @@
+[
+  {
+    "input": "Mai 7h hop nhom o thu vien nha.",
+    "expected": "Mai 7h hop nhom o thu vien nha."
+  },
+  {
+    "input": "Vao https://vcb-xacminh.xyz/login ngay.",
+    "expected": "Vao <URL> ngay."
+  },
+  {
+    "input": "Click bit.ly/abc123, het han hom nay!",
+    "expected": "Click <URL>, het han hom nay!"
+  },
+  {
+    "input": "Truy cap http://192.168.1.10/pay de nhan qua",
+    "expected": "Truy cap <URL> de nhan qua"
+  },
+  {
+    "input": "Xem shopee.vn/sale va www.example.com/a?b=1",
+    "expected": "Xem <URL> va <URL>"
+  },
+  {
+    "input": "Lien he 090 123 4567 hoac 0901.234.567",
+    "expected": "Lien he <PHONE> hoac <PHONE>"
+  },
+  {
+    "input": "Goi +84 901 234 567 hoac +84901234567 hoac 84901234567",
+    "expected": "Goi <PHONE> hoac <PHONE> hoac <PHONE>"
+  },
+  {
+    "input": "So 0123456789 la hotline",
+    "expected": "So <PHONE> la hotline"
+  },
+  {
+    "input": "Han 01.02.2026 10.30 den",
+    "expected": "Han 01.02.2026 10.30 den"
+  },
+  {
+    "input": "Hotline 1900 5454 13",
+    "expected": "Hotline 1900 5454 13"
+  },
+  {
+    "input": "Chuyen 500.000.000d truoc 19h30",
+    "expected": "Chuyen 500.000.000d truoc 19h30"
+  },
+  {
+    "input": "Ma OTP cua ban la 123456",
+    "expected": "Ma OTP cua ban la <OTP>"
+  },
+  {
+    "input": "OTP: 123 456 het han luc 10:30",
+    "expected": "OTP: <OTP> het han luc 10:30"
+  },
+  {
+    "input": "Mã xác minh 8472 nhé",
+    "expected": "Mã xác minh <OTP> nhé"
+  },
+  {
+    "input": "MÃ GIAO DỊCH 9182-7364",
+    "expected": "MÃ GIAO DỊCH <OTP>"
+  },
+  {
+    "input": "Ma OTP la 123456789",
+    "expected": "Ma OTP la <ACCOUNT>"
+  },
+  {
+    "input": "CCCD 012345678901 va CMND 123456789",
+    "expected": "CCCD <ID> va CMND <ID>"
+  },
+  {
+    "input": "Căn cước công dân của bạn: 001203004005",
+    "expected": "Căn cước công dân của bạn: <ID>"
+  },
+  {
+    "input": "STK 1234567890123 Vietcombank",
+    "expected": "STK <ACCOUNT> Vietcombank"
+  },
+  {
+    "input": "The 1234 5678 9012 3456 het han",
+    "expected": "The <ACCOUNT> het han"
+  },
+  {
+    "input": "Mail ho.tro@vcb-support.com. Xong",
+    "expected": "Mail <EMAIL>. Xong"
+  },
+  {
+    "input": "Ma van don VN1234567890VN",
+    "expected": "Ma van don VN<ACCOUNT>VN"
+  },
+  {
+    "input": "Vao <URL> va goi <PHONE> nhap <OTP>",
+    "expected": "Vao <URL> va goi <PHONE> nhap <OTP>"
+  },
+  {
+    "input": "Tài khoản Vietcombank của quý khách bị khóa, xác minh tại vcb.vip/x",
+    "expected": "Tài khoản Vietcombank của quý khách bị khóa, xác minh tại <URL>"
+  }
+]
