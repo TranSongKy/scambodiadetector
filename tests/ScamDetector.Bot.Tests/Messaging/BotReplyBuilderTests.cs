@@ -31,7 +31,7 @@ public sealed class BotReplyBuilderTests
 
         var reply = await builder.BuildReplyAsync(MessageWith(text), CancellationToken.None);
 
-        Assert.Equal(BotReplies.Welcome, reply);
+        Assert.Equal(BotReplies.Welcome, reply?.Text);
         Assert.Empty(classifier.ReceivedTexts);
     }
 
@@ -56,7 +56,7 @@ public sealed class BotReplyBuilderTests
         var reply = await builder.BuildReplyAsync(MessageWith(null, "chu thich"), CancellationToken.None);
 
         Assert.Equal(["chu thich"], classifier.ReceivedTexts);
-        Assert.StartsWith(BotReplies.NormalVerdict, reply, StringComparison.Ordinal);
+        Assert.StartsWith(BotReplies.NormalVerdict, reply?.Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class BotReplyBuilderTests
 
         var reply = await builder.BuildReplyAsync(MessageWith(text), CancellationToken.None);
 
-        Assert.Equal(BotReplies.EmptyText, reply);
+        Assert.Equal(BotReplies.EmptyText, reply?.Text);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class BotReplyBuilderTests
 
         var reply = await builder.BuildReplyAsync(MessageWith(new string('a', 2001)), CancellationToken.None);
 
-        Assert.Equal(BotReplies.TextTooLong, reply);
+        Assert.Equal(BotReplies.TextTooLong, reply?.Text);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class BotReplyBuilderTests
 
         var reply = await builder.BuildReplyAsync(MessageWith("tin nhan"), CancellationToken.None);
 
-        Assert.Equal(ReplyFormatter.FormatClassification(scam), reply);
+        Assert.Equal(ReplyFormatter.FormatClassification(scam), reply?.Text);
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public sealed class BotReplyBuilderTests
 
         var reply = await builder.BuildReplyAsync(MessageWith("tin nhan"), CancellationToken.None);
 
-        Assert.Equal(BotReplies.ModelUnavailable, reply);
+        Assert.Equal(BotReplies.ModelUnavailable, reply?.Text);
     }
 
     [Fact]

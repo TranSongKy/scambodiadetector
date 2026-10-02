@@ -34,4 +34,12 @@ export const UI_TEXT = Object.freeze({
   contextMenuTitle: "Kiểm tra tin nhắn này có lừa đảo không",
   saved: "Đã lưu.",
   permissionDenied: "Cần cấp quyền truy cập địa chỉ này để kiểm tra tin nhắn.",
+  reportPrompt: "Kết quả chưa đúng? Cho mình biết tin này thực sự là:",
+  reportThanks: "Cảm ơn bạn! Phản hồi đã được ghi nhận (nội dung đã được ẩn thông tin cá nhân).",
+});
+
+export const REPORT_LABEL_TEXT = Object.freeze({
+  [LABELS.scam]: "Lừa đảo",
+  [LABELS.spam]: "Quảng cáo",
+  [LABELS.normal]: "Bình thường",
 });

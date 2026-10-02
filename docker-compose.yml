@@ -45,8 +45,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       Classification__ScamThreshold: "0.7"
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      ConnectionStrings__ScamDetector: Server=sqlserver;Database=ScamDetector;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True
     volumes:
       - ./models:/models:ro
+    depends_on:
+      api:
+        condition: service_started
     restart: unless-stopped
 
 volumes:

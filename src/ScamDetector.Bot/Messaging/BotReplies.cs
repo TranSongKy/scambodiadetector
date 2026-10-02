@@ -19,4 +19,11 @@ public static class BotReplies
         $"Tin nhắn quá dài (tối đa {ClassificationLimits.MaxMessageLength} ký tự). Hãy gửi phần nội dung chính.";
     public const string InvalidText = "Không đọc được nội dung tin nhắn.";
     public const string ModelUnavailable = "Hệ thống đang bảo trì, bạn thử lại sau nhé.";
+    public const string ReportScamButton = "Báo: Lừa đảo";
+    public const string ReportSpamButton = "Báo: Quảng cáo";
+    public const string ReportNormalButton = "Báo: Bình thường";
+    public const string ReportThanks = "Cảm ơn bạn! Phản hồi đã được ghi nhận (đã ẩn thông tin cá nhân).";
+    public const string ReportOriginalMissing = "Không tìm thấy tin nhắn gốc để ghi nhận.";
+    public const string ReportsUnavailable = "Hệ thống chưa bật lưu phản hồi, bạn thử lại sau nhé.";
+    public const string ReportInvalid = "Không ghi nhận được phản hồi này.";
 }

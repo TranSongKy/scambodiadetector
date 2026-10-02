@@ -1,4 +1,11 @@
-import { CLASSIFICATIONS_PATH, LOOPBACK_HOSTS, MAX_MESSAGE_LENGTH, REQUEST_TIMEOUT_MS } from "./constants.js";
+import {
+  CLASSIFICATIONS_PATH,
+  LOOPBACK_HOSTS,
+  MAX_MESSAGE_LENGTH,
+  REPORT_CHANNEL,
+  REPORTS_PATH,
+  REQUEST_TIMEOUT_MS,
+} from "./constants.js";
 import { ERROR_MESSAGES, REASON_DESCRIPTIONS, SCAM_ADVICE, VERDICTS } from "./messages.js";
 
 const HTTP_SERVICE_UNAVAILABLE = 503;
@@ -59,13 +66,13 @@ export async function problemMessage(response) {
   }
 }
 
-export async function classify(apiBaseUrl, text, fetchImplementation = fetch, timeoutMs = REQUEST_TIMEOUT_MS) {
+async function postJson(url, body, fetchImplementation, timeoutMs) {
   let response;
   try {
-    response = await fetchImplementation(apiBaseUrl + CLASSIFICATIONS_PATH, {
+    response = await fetchImplementation(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
@@ -74,5 +81,14 @@ export async function classify(apiBaseUrl, text, fetchImplementation = fetch, ti
   if (!response.ok) {
     throw new ClassificationError(await problemMessage(response));
   }
-  return formatResult(await response.json());
+  return response.json();
+}
+
+export async function classify(apiBaseUrl, text, fetchImplementation = fetch, timeoutMs = REQUEST_TIMEOUT_MS) {
+  return formatResult(await postJson(apiBaseUrl + CLASSIFICATIONS_PATH, { text }, fetchImplementation, timeoutMs));
+}
+
+export async function report(apiBaseUrl, text, label, fetchImplementation = fetch, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const body = { text, label, channel: REPORT_CHANNEL };
+  return (await postJson(apiBaseUrl + REPORTS_PATH, body, fetchImplementation, timeoutMs)).id;
 }

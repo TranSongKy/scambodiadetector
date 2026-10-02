@@ -19,6 +19,7 @@ public sealed class TelegramPollingServiceTests
         return new TelegramPollingService(
             client,
             new BotReplyBuilder(classifier),
+            new ReportCallbackHandler(FakeReportServices.ScopeFactory(new FakeMessageReportService())),
             new TelegramOptions { BotToken = "fake-token" },
             NullLogger<TelegramPollingService>.Instance);
     }
@@ -133,6 +134,7 @@ public sealed class TelegramPollingServiceTests
         var service = new TelegramPollingService(
             client,
             new BotReplyBuilder(classifier),
+            new ReportCallbackHandler(FakeReportServices.ScopeFactory(new FakeMessageReportService())),
             new TelegramOptions { BotToken = "fake-token" },
             NullLogger<TelegramPollingService>.Instance);
 
@@ -140,5 +142,34 @@ public sealed class TelegramPollingServiceTests
 
         var reply = Assert.Single(client.SentReplies);
         Assert.Equal(BotReplies.Welcome, reply.Text);
+    }
+
+    [Fact]
+    public async Task PollOnceAsync_ClassifiedMessage_AttachesReportKeyboard()
+    {
+        var client = new FakeTelegramClient([TextUpdate(1, "mot"), TextUpdate(2, "/start")]);
+        var service = CreateService(client);
+
+        await service.PollOnceAsync(CancellationToken.None);
+
+        Assert.Same(ReportKeyboard.Markup, client.SentMarkups[0]);
+        Assert.Null(client.SentMarkups[1]);
+    }
+
+    [Fact]
+    public async Task PollOnceAsync_CallbackQuery_AnswersWithHandlerResult()
+    {
+        var original = new TelegramMessage(1, new TelegramChat(42), "tin goc", null);
+        var callback = new TelegramCallbackQuery(
+            "cb-9",
+            new TelegramMessage(2, new TelegramChat(42), "bot reply", null, original),
+            ReportCallbackData.For(MessageLabel.Scam));
+        var client = new FakeTelegramClient([new TelegramUpdate(3, null, callback)]);
+        var service = CreateService(client);
+
+        await service.PollOnceAsync(CancellationToken.None);
+
+        Assert.Equal(("cb-9", BotReplies.ReportThanks), Assert.Single(client.CallbackAnswers));
+        Assert.Empty(client.SentReplies);
     }
 }

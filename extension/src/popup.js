@@ -1,6 +1,6 @@
-import { ClassificationError, classify, validateText } from "./classification.js";
+import { ClassificationError, classify, report, validateText } from "./classification.js";
 import { MAX_MESSAGE_LENGTH } from "./constants.js";
-import { ERROR_MESSAGES, UI_TEXT } from "./messages.js";
+import { ERROR_MESSAGES, REPORT_LABEL_TEXT, UI_TEXT } from "./messages.js";
 import { loadApiBaseUrl, takePendingText } from "./settings.js";
 
 const elements = {
@@ -13,7 +13,12 @@ const elements = {
   advice: document.getElementById("advice"),
   error: document.getElementById("error"),
   openOptions: document.getElementById("open-options"),
+  reportPrompt: document.getElementById("report-prompt"),
+  reportButtons: document.getElementById("report-buttons"),
+  reportStatus: document.getElementById("report-status"),
 };
+
+let lastCheckedText = "";
 
 function showError(message) {
   elements.result.hidden = true;
@@ -31,7 +36,37 @@ function showResult(formatted) {
   elements.advice.textContent = formatted.advice ?? "";
   elements.advice.hidden = formatted.advice === null;
   elements.result.classList.toggle("scam", formatted.isScam);
+  elements.reportStatus.textContent = "";
+  setReportButtonsDisabled(false);
   elements.result.hidden = false;
+}
+
+function setReportButtonsDisabled(disabled) {
+  for (const button of elements.reportButtons.querySelectorAll("button")) {
+    button.disabled = disabled;
+  }
+}
+
+async function sendReport(label) {
+  setReportButtonsDisabled(true);
+  try {
+    await report(await loadApiBaseUrl(), lastCheckedText, label);
+    elements.reportStatus.textContent = UI_TEXT.reportThanks;
+  } catch (error) {
+    elements.reportStatus.textContent = error instanceof ClassificationError ? error.message : ERROR_MESSAGES.unexpected;
+    setReportButtonsDisabled(false);
+  }
+}
+
+function renderReportButtons() {
+  elements.reportPrompt.textContent = UI_TEXT.reportPrompt;
+  elements.reportButtons.replaceChildren(
+    ...Object.entries(REPORT_LABEL_TEXT).map(([label, text]) => {
+      const button = Object.assign(document.createElement("button"), { type: "button", textContent: text });
+      button.addEventListener("click", () => sendReport(label));
+      return button;
+    }),
+  );
 }
 
 async function checkMessage() {
@@ -44,6 +79,7 @@ async function checkMessage() {
   elements.check.disabled = true;
   try {
     showResult(await classify(await loadApiBaseUrl(), text));
+    lastCheckedText = text;
   } catch (error) {
     showError(error instanceof ClassificationError ? error.message : ERROR_MESSAGES.unexpected);
   } finally {
@@ -59,6 +95,7 @@ elements.openOptions.addEventListener("click", (event) => {
 
 await chrome.action.setBadgeText({ text: "" });
 elements.message.maxLength = MAX_MESSAGE_LENGTH;
+renderReportButtons();
 const pendingText = await takePendingText();
 if (pendingText) {
   elements.message.value = pendingText;

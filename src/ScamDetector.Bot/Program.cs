@@ -12,7 +12,9 @@ var telegramOptions = TelegramOptionsValidator.Validate(
 builder.Services.AddScamDetector(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddScamModelHealthCheck();
 builder.Services.AddSingleton(telegramOptions);
+builder.Services.AddScamDetectorPersistence(builder.Configuration);
 builder.Services.AddSingleton<BotReplyBuilder>();
+builder.Services.AddSingleton<ReportCallbackHandler>();
 builder.Services
     .AddHttpClient<ITelegramClient, TelegramApiClient>(client =>
     {

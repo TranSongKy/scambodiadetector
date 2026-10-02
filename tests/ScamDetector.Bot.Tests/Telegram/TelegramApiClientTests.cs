@@ -1,3 +1,4 @@
+using ScamDetector.Bot.Messaging;
 using System.Net;
 using System.Text.Json;
 using ScamDetector.Bot.Telegram;
@@ -43,7 +44,7 @@ public sealed class TelegramApiClientTests
         var request = handler.CapturedRequest!;
         Assert.Equal(HttpMethod.Get, request.Method);
         Assert.Equal(
-            $"{BaseAddress}getUpdates?offset=11&timeout=25&allowed_updates=%5B%22message%22%5D",
+            $"{BaseAddress}getUpdates?offset=11&timeout=25&allowed_updates=%5B%22message%22%2C%22callback_query%22%5D",
             request.RequestUri!.AbsoluteUri);
     }
 
@@ -77,7 +78,7 @@ public sealed class TelegramApiClientTests
         var client = CreateClient(handler);
         var message = new TelegramMessage(7, new TelegramChat(42), "hi", null);
 
-        await client.SendReplyAsync(message, "Chào bạn", CancellationToken.None);
+        await client.SendReplyAsync(message, "Chào bạn", null, CancellationToken.None);
 
         var request = handler.CapturedRequest!;
         Assert.Equal(HttpMethod.Post, request.Method);
@@ -96,7 +97,7 @@ public sealed class TelegramApiClientTests
         var message = new TelegramMessage(7, new TelegramChat(42), "hi", null);
 
         await Assert.ThrowsAsync<TelegramApiException>(
-            () => client.SendReplyAsync(message, "text", CancellationToken.None));
+            () => client.SendReplyAsync(message, "text", null, CancellationToken.None));
     }
 
     [Fact]
@@ -130,6 +131,62 @@ public sealed class TelegramApiClientTests
         var client = CreateClient(handler);
         var message = new TelegramMessage(1, new TelegramChat(42), "hi", null);
 
-        await Assert.ThrowsAsync<TelegramApiException>(() => client.SendReplyAsync(message, "reply", CancellationToken.None));
+        await Assert.ThrowsAsync<TelegramApiException>(() => client.SendReplyAsync(message, "reply", null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SendReplyAsync_WithKeyboard_SerializesInlineKeyboardAndOmitsNulls()
+    {
+        using var handler = new FakeHttpMessageHandler("""{"ok":true,"result":{"message_id":9,"chat":{"id":42}}}""");
+        var client = CreateClient(handler);
+        var message = new TelegramMessage(5, new TelegramChat(42), "hi", null);
+
+        await client.SendReplyAsync(message, "reply", ReportKeyboard.Markup, CancellationToken.None);
+
+        using var body = JsonDocument.Parse(handler.CapturedBody!);
+        var buttons = body.RootElement.GetProperty("reply_markup").GetProperty("inline_keyboard")[0];
+        Assert.Equal(3, buttons.GetArrayLength());
+        Assert.Equal("report:scam", buttons[0].GetProperty("callback_data").GetString());
+    }
+
+    [Fact]
+    public async Task SendReplyAsync_WithoutKeyboard_OmitsReplyMarkup()
+    {
+        using var handler = new FakeHttpMessageHandler("""{"ok":true,"result":{"message_id":9,"chat":{"id":42}}}""");
+        var client = CreateClient(handler);
+        var message = new TelegramMessage(5, new TelegramChat(42), "hi", null);
+
+        await client.SendReplyAsync(message, "reply", null, CancellationToken.None);
+
+        using var body = JsonDocument.Parse(handler.CapturedBody!);
+        Assert.False(body.RootElement.TryGetProperty("reply_markup", out _));
+    }
+
+    [Fact]
+    public async Task AnswerCallbackQueryAsync_Called_PostsCallbackIdAndText()
+    {
+        using var handler = new FakeHttpMessageHandler("""{"ok":true,"result":true}""");
+        var client = CreateClient(handler);
+
+        await client.AnswerCallbackQueryAsync("cb-1", "Cảm ơn", CancellationToken.None);
+
+        Assert.EndsWith("answerCallbackQuery", handler.CapturedRequest!.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        using var body = JsonDocument.Parse(handler.CapturedBody!);
+        Assert.Equal("cb-1", body.RootElement.GetProperty("callback_query_id").GetString());
+        Assert.Equal("Cảm ơn", body.RootElement.GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public async Task GetUpdatesAsync_CallbackQueryUpdate_ParsesReplyToMessage()
+    {
+        using var handler = new FakeHttpMessageHandler(
+            """{"ok":true,"result":[{"update_id":8,"callback_query":{"id":"cb-1","data":"report:spam","message":{"message_id":3,"chat":{"id":42},"text":"bot reply","reply_to_message":{"message_id":2,"chat":{"id":42},"text":"tin goc"}}}}]}""");
+        var client = CreateClient(handler);
+
+        var update = Assert.Single(await client.GetUpdatesAsync(0, CancellationToken.None));
+
+        Assert.Null(update.Message);
+        Assert.Equal("report:spam", update.CallbackQuery!.Data);
+        Assert.Equal("tin goc", update.CallbackQuery.Message!.ReplyToMessage!.Content);
     }
 }

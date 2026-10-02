@@ -6,6 +6,7 @@ namespace ScamDetector.Bot.Polling;
 public sealed partial class TelegramPollingService(
     ITelegramClient telegramClient,
     BotReplyBuilder replyBuilder,
+    ReportCallbackHandler reportCallbackHandler,
     TelegramOptions options,
     ILogger<TelegramPollingService> logger) : BackgroundService
 {
@@ -33,22 +34,30 @@ public sealed partial class TelegramPollingService(
         foreach (var update in updates)
         {
             _nextOffset = Math.Max(_nextOffset, update.UpdateId + 1);
-            if (update.Message is not null)
-                await HandleMessageSafelyAsync(update.UpdateId, update.Message, cancellationToken);
+            try
+            {
+                await HandleUpdateAsync(update, cancellationToken);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                LogUpdateFailed(logger, update.UpdateId, exception);
+            }
         }
     }
 
-    private async Task HandleMessageSafelyAsync(long updateId, TelegramMessage message, CancellationToken cancellationToken)
+    private async Task HandleUpdateAsync(TelegramUpdate update, CancellationToken cancellationToken)
     {
-        try
+        if (update.Message is { } message)
         {
             var reply = await replyBuilder.BuildReplyAsync(message, cancellationToken);
             if (reply is not null)
-                await telegramClient.SendReplyAsync(message, reply, cancellationToken);
+                await telegramClient.SendReplyAsync(message, reply.Text, reply.OfferReport ? ReportKeyboard.Markup : null, cancellationToken);
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+
+        if (update.CallbackQuery is { } callbackQuery)
         {
-            LogUpdateFailed(logger, updateId, exception);
+            var answer = await reportCallbackHandler.HandleAsync(callbackQuery, cancellationToken);
+            await telegramClient.AnswerCallbackQueryAsync(callbackQuery.Id, answer, cancellationToken);
         }
     }
 

@@ -8,6 +8,7 @@ import {
   describeReason,
   formatResult,
   normalizeApiBaseUrl,
+  report,
   validateText,
 } from "../src/classification.js";
 import { MAX_MESSAGE_LENGTH } from "../src/constants.js";
@@ -109,6 +110,27 @@ test("classify maps problem codes, 503 and network errors to Vietnamese messages
       return true;
     });
   }
+});
+
+test("report posts text, label and extension channel and returns the id", async () => {
+  let captured;
+  const fakeFetch = async (url, init) => {
+    captured = { url, body: JSON.parse(init.body) };
+    return jsonResponse(201, { id: "0199a0c0-0000-7000-8000-000000000001" });
+  };
+
+  const id = await report(API, "Goi 0901234567", "scam", fakeFetch);
+
+  assert.equal(captured.url, "http://localhost:8080/api/v1/reports");
+  assert.deepEqual(captured.body, { text: "Goi 0901234567", label: "scam", channel: "extension" });
+  assert.equal(id, "0199a0c0-0000-7000-8000-000000000001");
+});
+
+test("report maps 503 to the maintenance message", async () => {
+  await assert.rejects(report(API, "x", "scam", async () => jsonResponse(503, { status: 503 })), (error) => {
+    assert.equal(error.message, ERROR_MESSAGES.modelUnavailable);
+    return true;
+  });
 });
 
 test("reason descriptions cover every reason code defined in C#", () => {

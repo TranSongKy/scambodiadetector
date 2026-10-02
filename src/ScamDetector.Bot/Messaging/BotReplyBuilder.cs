@@ -8,24 +8,24 @@ public sealed class BotReplyBuilder(IMessageClassifier classifier)
 {
     private const char BotMentionSeparator = '@';
 
-    public async Task<string?> BuildReplyAsync(TelegramMessage message, CancellationToken cancellationToken)
+    public async Task<BotReply?> BuildReplyAsync(TelegramMessage message, CancellationToken cancellationToken)
     {
         var content = message.Content;
         if (content is null)
             return null;
         if (IsCommand(content, BotCommands.Start) || IsCommand(content, BotCommands.Help))
-            return BotReplies.Welcome;
+            return new BotReply(BotReplies.Welcome, OfferReport: false);
 
         try
         {
             var result = await classifier.ClassifyAsync(content, cancellationToken);
             return result.IsSuccess
-                ? ReplyFormatter.FormatClassification(result.Value)
-                : ReplyFormatter.FormatError(result.Error!);
+                ? new BotReply(ReplyFormatter.FormatClassification(result.Value), OfferReport: true)
+                : new BotReply(ReplyFormatter.FormatError(result.Error!), OfferReport: false);
         }
         catch (ScamModelUnavailableException)
         {
-            return BotReplies.ModelUnavailable;
+            return new BotReply(BotReplies.ModelUnavailable, OfferReport: false);
         }
     }
 

@@ -10,7 +10,8 @@ public sealed class TelegramApiClient(HttpClient httpClient, TelegramOptions opt
 {
     private const string GetUpdatesMethod = "getUpdates";
     private const string SendMessageMethod = "sendMessage";
-    private const string AllowedUpdates = "[\"message\"]";
+    private const string AnswerCallbackQueryMethod = "answerCallbackQuery";
+    private const string AllowedUpdates = "[\"message\",\"callback_query\"]";
     private const string EmptyResponseDescription = "empty response";
 
     public async Task<IReadOnlyList<TelegramUpdate>> GetUpdatesAsync(long offset, CancellationToken cancellationToken)
@@ -23,15 +24,30 @@ public sealed class TelegramApiClient(HttpClient httpClient, TelegramOptions opt
         return updates ?? [];
     }
 
-    public async Task SendReplyAsync(TelegramMessage message, string text, CancellationToken cancellationToken)
+    public async Task SendReplyAsync(
+        TelegramMessage message,
+        string text,
+        TelegramInlineKeyboardMarkup? replyMarkup,
+        CancellationToken cancellationToken)
     {
-        var request = new SendMessageRequest(message.Chat.Id, text, new TelegramReplyParameters(message.MessageId));
+        var request = new SendMessageRequest(message.Chat.Id, text, new TelegramReplyParameters(message.MessageId), replyMarkup);
+        await PostAsync<SendMessageRequest, TelegramMessage>(SendMessageMethod, request, cancellationToken);
+    }
+
+    public async Task AnswerCallbackQueryAsync(string callbackQueryId, string text, CancellationToken cancellationToken)
+    {
+        var request = new AnswerCallbackQueryRequest(callbackQueryId, text);
+        await PostAsync<AnswerCallbackQueryRequest, bool>(AnswerCallbackQueryMethod, request, cancellationToken);
+    }
+
+    private async Task PostAsync<TRequest, TResult>(string method, TRequest request, CancellationToken cancellationToken)
+    {
         using var content = new StringContent(
             JsonSerializer.Serialize(request, TelegramJson.Options),
             Encoding.UTF8,
             MediaTypeNames.Application.Json);
-        using var httpResponse = await httpClient.PostAsync(new Uri(SendMessageMethod, UriKind.Relative), content, cancellationToken);
-        await ReadResultAsync<TelegramMessage>(httpResponse, cancellationToken);
+        using var httpResponse = await httpClient.PostAsync(new Uri(method, UriKind.Relative), content, cancellationToken);
+        await ReadResultAsync<TResult>(httpResponse, cancellationToken);
     }
 
     private static async Task<TResult?> ReadResultAsync<TResult>(HttpResponseMessage httpResponse, CancellationToken cancellationToken)

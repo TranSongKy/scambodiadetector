@@ -20,12 +20,27 @@ public sealed class FakeTelegramClient(params IReadOnlyList<TelegramUpdate>[] ba
         return Task.FromResult(batch);
     }
 
-    public Task SendReplyAsync(TelegramMessage message, string text, CancellationToken cancellationToken)
+    public List<TelegramInlineKeyboardMarkup?> SentMarkups { get; } = [];
+
+    public List<(string CallbackQueryId, string Text)> CallbackAnswers { get; } = [];
+
+    public Task AnswerCallbackQueryAsync(string callbackQueryId, string text, CancellationToken cancellationToken)
+    {
+        CallbackAnswers.Add((callbackQueryId, text));
+        return Task.CompletedTask;
+    }
+
+    public Task SendReplyAsync(
+        TelegramMessage message,
+        string text,
+        TelegramInlineKeyboardMarkup? replyMarkup,
+        CancellationToken cancellationToken)
     {
         if (FailingChatIds.Contains(message.Chat.Id))
             throw new TelegramApiException("Forbidden: bot was blocked by the user");
 
         SentReplies.Add((message, text));
+        SentMarkups.Add(replyMarkup);
         return Task.CompletedTask;
     }
 }

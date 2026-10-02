@@ -143,13 +143,14 @@ curl -X POST http://localhost:8080/api/v1/reports \
 Telegram__BotToken=<token> dotnet run --project src/ScamDetector.Bot
 ```
 
-Người dùng gửi hoặc forward tin nhắn nghi ngờ cho bot, bot trả lời kết luận, độ tin cậy, lý do bằng tiếng Việt và lời khuyên khi là lừa đảo. `/start`, `/help` hiện hướng dẫn. Bot không log nội dung tin nhắn.
+Người dùng gửi hoặc forward tin nhắn nghi ngờ cho bot, bot trả lời kết luận, độ tin cậy, lý do bằng tiếng Việt và lời khuyên khi là lừa đảo, kèm 3 nút **Báo: Lừa đảo / Quảng cáo / Bình thường** để người dùng sửa kết quả (lưu vào `MessageReports` đã ẩn danh, cần `ConnectionStrings:ScamDetector`). `/start`, `/help` hiện hướng dẫn. Bot không log nội dung tin nhắn.
 
 ## Chrome extension
 
 1. Mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `extension/`.
 2. Mặc định gọi API ở `http://localhost:8080`. Đổi trong **Cài đặt** của extension; Chrome sẽ hỏi quyền truy cập địa chỉ mới.
-3. Dùng: bấm biểu tượng extension và dán tin nhắn, hoặc bôi đen tin nhắn trên trang web → chuột phải → **Kiểm tra tin nhắn này có lừa đảo không**.
+3. Dùng: bấm biểu tượng extension và dán tin nhắn, hoặc bôi đen tin nhắn trên trang web → chuột phải → **Kiểm tra tin nhắn này có lừa đảo không**. Dưới kết quả có nút báo lại nhãn đúng (gửi tới `/api/v1/reports`).
+4. Chỉ chấp nhận địa chỉ `https://`, hoặc `http://` với localhost.
 
 Test: `cd extension && npm test` (Node 22, không cần cài gói). CI đóng gói `scambodia-extension.zip` để tải lên Chrome Web Store.
 
