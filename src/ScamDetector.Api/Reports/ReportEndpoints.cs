@@ -13,6 +13,7 @@ public static class ReportEndpoints
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPost(RoutePrefix, CreateAsync).RequireRateLimiting(RateLimitOptions.PolicyName);
+        endpoints.MapGet(RoutePrefix, ListAsync).AddEndpointFilter<ApiKeyEndpointFilter>();
         return endpoints;
     }
 
@@ -34,4 +35,22 @@ public static class ReportEndpoints
 
         return TypedResults.Created($"{RoutePrefix}/{result.Value}", new CreateReportResponse(result.Value));
     }
+
+    private static async Task<Ok<List<ReportResponse>>> ListAsync(
+        DateTimeOffset? since,
+        int? limit,
+        IMessageReportService reportService,
+        CancellationToken cancellationToken)
+    {
+        var reports = await reportService.ListAsync(since, limit, cancellationToken);
+        return TypedResults.Ok(reports.Select(ToResponse).ToList());
+    }
+
+    private static ReportResponse ToResponse(MessageReport report) =>
+        new(
+            report.Id,
+            report.MaskedText,
+            MessageLabelNames.From(report.ReportedLabel),
+            ReportChannelNames.From(report.Channel),
+            report.CreatedAt);
 }

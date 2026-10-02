@@ -35,4 +35,7 @@ public sealed class MessageReportService(IMessageReportRepository repository, Ti
 
         return report.Id;
     }
+
+    public Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int? limit, CancellationToken cancellationToken) =>
+        repository.ListAsync(since, ReportListLimits.Clamp(limit), cancellationToken);
 }

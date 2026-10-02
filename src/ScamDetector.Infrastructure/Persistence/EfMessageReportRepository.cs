@@ -20,4 +20,12 @@ public sealed class EfMessageReportRepository(ScamDetectorDbContext dbContext) :
             throw new ReportsUnavailableException(SaveFailedMessage, exception);
         }
     }
+
+    public async Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int limit, CancellationToken cancellationToken)
+    {
+        var query = dbContext.MessageReports.AsNoTracking();
+        if (since is { } sinceValue)
+            query = query.Where(report => report.CreatedAt >= sinceValue);
+        return await query.OrderBy(report => report.CreatedAt).ThenBy(report => report.Id).Take(limit).ToListAsync(cancellationToken);
+    }
 }

@@ -56,6 +56,8 @@ python scripts/validate_dataset.py data/processed/dataset.csv
 python scripts/split_dataset.py data/processed/dataset.csv data/processed/splits
 ```
 
+Báo cáo người dùng từ API/bot/extension: `scripts/export_reports.py` (xem mục API) → duyệt tay → `anonymize.py` như trên.
+
 `anonymize.py` không in nội dung tin nhắn, chỉ in id và số lượng. Tập test trong `splits/test.csv` cố định sau lần chia đầu.
 
 ## Huấn luyện model
@@ -137,6 +139,16 @@ curl -X POST http://localhost:8080/api/v1/reports \
 ```
 
 `channel` là `api` (mặc định), `telegram` hoặc `extension`. Lỗi: 400 `report.invalid_label`, `report.invalid_channel`, `classification.empty_text`, `classification.text_too_long`; 503 khi chưa cấu hình database.
+
+### `GET /api/v1/reports` (quản trị)
+
+Liệt kê báo cáo đã ẩn danh để người gán nhãn duyệt. Cần header `X-Api-Key` khớp `ReportAdmin:ApiKey`; khi chưa cấu hình key thì endpoint trả 404. Tham số: `since` (ISO 8601), `limit` (1–500, mặc định 100).
+
+```bash
+REPORTS_API_KEY=<key> python scripts/export_reports.py data/raw/reports_review.csv --api https://api.example.vn --since 2026-10-01
+```
+
+File xuất có `source = contributed`, `annotator` để trống; duyệt và sửa nhãn rồi đưa qua `scripts/anonymize.py` như dữ liệu thô khác.
 
 ### `GET /health`
 

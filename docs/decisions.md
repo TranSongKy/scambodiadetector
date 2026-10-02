@@ -106,3 +106,10 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 
 - **Lựa chọn:** `RateLimiter` có sẵn của ASP.NET, cửa sổ cố định theo IP cho endpoint phân loại và báo cáo (mặc định 30 request/60 giây, hằng `RateLimitOptions.Default*`); `/health` không giới hạn.
 - **Sau reverse proxy:** `RateLimiting:TrustForwardedHeaders=true` bật `X-Forwarded-For` và tin mọi proxy (xóa `KnownProxies`/`KnownIPNetworks`). Chỉ bật khi API **không** nhận kết nối trực tiếp từ internet, nếu không client tự đặt header để lách giới hạn. Mặc định tắt.
+
+## 016. Xuất báo cáo qua API có API key
+
+- **Lựa chọn:** `GET /api/v1/reports` trả báo cáo đã ẩn danh, bảo vệ bằng header `X-Api-Key` so với `ReportAdmin:ApiKey` (so sánh hash SHA-256 bằng `CryptographicOperations.FixedTimeEquals` để không lộ qua thời gian phản hồi). Không cấu hình key thì endpoint trả 404 như không tồn tại.
+- **Lý do:** Người gán nhãn không cần quyền truy cập SQL Server; script `export_reports.py` chỉ dùng thư viện chuẩn Python (không thêm `pyodbc`).
+- **Đánh đổi:** Một key dùng chung, chưa phân quyền theo người. Đủ cho nhóm nhỏ; nếu mở rộng thì thay bằng xác thực thật (OIDC).
+- **SQLite trong test:** SQLite không so sánh được `DateTimeOffset`, nên `ScamDetectorDbContext` chỉ bật `DateTimeOffsetToBinaryConverter` khi provider là SQLite; model SQL Server và migration không đổi (`MigrationTests` kiểm tra).

@@ -24,4 +24,12 @@ public sealed class FakeMessageReportRepository : IMessageReportRepository
         _addedReports.Add(report);
         return Task.CompletedTask;
     }
+
+    public (DateTimeOffset? Since, int Limit)? ReceivedListQuery { get; private set; }
+
+    public Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int limit, CancellationToken cancellationToken)
+    {
+        ReceivedListQuery = (since, limit);
+        return Task.FromResult<IReadOnlyList<MessageReport>>(_addedReports);
+    }
 }

@@ -10,4 +10,6 @@ public interface IMessageReportService
         MessageLabel reportedLabel,
         ReportChannel channel,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int? limit, CancellationToken cancellationToken);
 }

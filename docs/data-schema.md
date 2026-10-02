@@ -3,6 +3,9 @@
 ## 1. Luồng dữ liệu
 
 ```
+MessageReports (DB)  Báo cáo người dùng, đã che PII khi lưu.
+   │  scripts/export_reports.py → duyệt tay → vào data/raw/
+   ▼
 data/raw/            Dữ liệu gốc, có thể chứa thông tin cá nhân. KHÔNG commit.
    │  scripts/anonymize.py
    ▼

@@ -17,6 +17,7 @@ builder.Services.AddScamDetector(builder.Configuration, builder.Environment.Cont
 builder.Services.AddScamModelHealthCheck();
 builder.Services.AddScamDetectorPersistence(builder.Configuration);
 builder.Services.AddClientRateLimiting(rateLimitOptions);
+builder.Services.AddSingleton(builder.Configuration.GetSection(ReportAdminOptions.SectionName).Get<ReportAdminOptions>() ?? new ReportAdminOptions());
 
 var app = builder.Build();
 

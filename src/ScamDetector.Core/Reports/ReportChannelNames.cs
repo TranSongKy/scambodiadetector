@@ -13,6 +13,9 @@ public static class ReportChannelNames
         (Extension, ReportChannel.Extension),
     ];
 
+    public static string From(ReportChannel channel) =>
+        Channels.First(entry => entry.Channel == channel).Name;
+
     public static bool TryParse(string? name, out ReportChannel channel)
     {
         var trimmed = name?.Trim();

@@ -8,4 +8,7 @@ public sealed class UnavailableMessageReportRepository : IMessageReportRepositor
 
     public Task AddAsync(MessageReport report, CancellationToken cancellationToken) =>
         throw new ReportsUnavailableException(NotConfiguredMessage);
+
+    public Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int limit, CancellationToken cancellationToken) =>
+        throw new ReportsUnavailableException(NotConfiguredMessage);
 }

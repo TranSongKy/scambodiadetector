@@ -11,4 +11,8 @@ public sealed class FakeMessageReportRepository : IMessageReportRepository
         Reports.Add(report);
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<MessageReport>>(
+            Reports.Where(report => since is null || report.CreatedAt >= since).Take(limit).ToList());
 }

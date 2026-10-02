@@ -74,5 +74,26 @@ public sealed class EfMessageReportRepositoryTests : IDisposable
             () => new EfMessageReportRepository(secondContext).AddAsync(duplicate, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task ListAsync_SinceAndLimit_ReturnsOldestMatchingReportsFirst()
+    {
+        await using (var dbContext = _fixture.CreateDbContext())
+        {
+            var repository = new EfMessageReportRepository(dbContext);
+            foreach (var hours in new[] { 3, 1, 2, -1 })
+            {
+                var createdAt = CreatedAt.AddHours(hours);
+                await repository.AddAsync(
+                    new MessageReport(Guid.CreateVersion7(createdAt), $"tin {hours}", MessageLabel.Spam, ReportChannel.Api, createdAt),
+                    CancellationToken.None);
+            }
+        }
+
+        await using var readContext = _fixture.CreateDbContext();
+        var reports = await new EfMessageReportRepository(readContext).ListAsync(CreatedAt, 2, CancellationToken.None);
+
+        Assert.Equal(["tin 1", "tin 2"], reports.Select(report => report.MaskedText));
+    }
+
     public void Dispose() => _fixture.Dispose();
 }

@@ -20,4 +20,7 @@ public sealed class FakeMessageReportService(Exception? exception = null) : IMes
         Submissions.Add((text, reportedLabel, channel));
         return Task.FromResult(Result.Success(Guid.CreateVersion7()));
     }
+
+    public Task<IReadOnlyList<MessageReport>> ListAsync(DateTimeOffset? since, int? limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<MessageReport>>([]);
 }
