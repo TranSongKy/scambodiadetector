@@ -1,0 +1,62 @@
+name: Model contract
+
+on:
+  pull_request:
+    paths:
+      - "scripts/train_phobert.py"
+      - "scripts/export_contract_check.py"
+      - "scripts/make_tokenizer_golden.py"
+      - "scripts/masking.py"
+      - "src/ScamDetector.Core/**"
+      - "src/ScamDetector.Infrastructure/Onnx/**"
+      - "src/ScamDetector.Infrastructure/Tokenization/**"
+      - "src/ScamDetector.Api/**"
+      - "requirements-train.txt"
+      - ".github/workflows/model-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-and-serve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Install CPU-only training dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-train.txt
+      - name: Export untrained PhoBERT classifier to ONNX and check PyTorch parity
+        working-directory: scripts
+        run: python export_contract_check.py "$RUNNER_TEMP/model"
+      - name: Compare .NET tokenizer with HuggingFace on the exported tokenizer
+        run: dotnet run scripts/VerifyTokenizer.cs -- "$RUNNER_TEMP/model"
+      - name: Serve the exported model with ScamDetector.Api
+        run: |
+          dotnet publish src/ScamDetector.Api --configuration Release --output "$RUNNER_TEMP/api"
+          export OnnxModel__ModelPath="$RUNNER_TEMP/model/scam-detector.onnx"
+          export OnnxModel__VocabularyPath="$RUNNER_TEMP/model/vocab.txt"
+          export OnnxModel__BpeCodesPath="$RUNNER_TEMP/model/bpe.codes"
+          export ASPNETCORE_URLS=http://127.0.0.1:8080
+          dotnet "$RUNNER_TEMP/api/ScamDetector.Api.dll" > "$RUNNER_TEMP/api.log" 2>&1 &
+          status=""
+          for attempt in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/health || true)
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/api.log"
+          test "$status" = "200"
+          response=$(curl -s -w '\n%{http_code}' -H 'content-type: application/json' \
+            -d '{"text":"Tài khoản của quý khách bị khóa, xác minh tại bit.ly/abc"}' \
+            http://127.0.0.1:8080/api/v1/classifications)
+          echo "$response"
+          test "$(echo "$response" | tail -n 1)" = "200"
+          echo "$response" | head -n 1 | python -c "import json,sys; body=json.load(sys.stdin); assert body['label'] in {'scam','spam','normal'}; assert 0 <= body['confidence'] <= 1"

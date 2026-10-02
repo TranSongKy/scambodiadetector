@@ -104,22 +104,23 @@ def tokenize_split(tokenizer: Any, split: Split) -> Any:
     )
 
 
-def train(splits: dict[str, Split], output_dir: Path, options: argparse.Namespace) -> tuple[Any, Any]:
-    from transformers import (
-        AutoModelForSequenceClassification,
-        AutoTokenizer,
-        DataCollatorWithPadding,
-        Trainer,
-        TrainingArguments,
-    )
+def load_base_model(base_model: str) -> tuple[Any, Any]:
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(options.base_model, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=False)
     model = AutoModelForSequenceClassification.from_pretrained(
-        options.base_model,
+        base_model,
         num_labels=len(LABELS),
         id2label=dict(enumerate(LABELS)),
         label2id={label: label_id for label_id, label in enumerate(LABELS)},
     )
+    return model, tokenizer
+
+
+def train(splits: dict[str, Split], output_dir: Path, options: argparse.Namespace) -> tuple[Any, Any]:
+    from transformers import DataCollatorWithPadding, Trainer, TrainingArguments
+
+    model, tokenizer = load_base_model(options.base_model)
     arguments = TrainingArguments(
         output_dir=str(output_dir.with_name(output_dir.name + CHECKPOINT_DIRECTORY_SUFFIX)),
         learning_rate=options.learning_rate,
