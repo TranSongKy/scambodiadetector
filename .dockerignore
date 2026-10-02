@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/TestResults/
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+data/
+models/
+notebooks/
+tests/
+scripts/
+docs/
+**/appsettings.Development.json
+**/*.user

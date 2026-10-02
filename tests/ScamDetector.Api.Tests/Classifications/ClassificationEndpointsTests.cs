@@ -24,7 +24,7 @@ public sealed class ClassificationEndpointsTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ClassificationResponse>(CancellationToken.None);
         Assert.NotNull(body);
-        Assert.Equal(LabelNames.Scam, body.Label);
+        Assert.Equal(MessageLabelNames.Scam, body.Label);
         Assert.Equal(0.9, body.Confidence);
         Assert.Contains(ClassificationReasons.ModelPredictedScam, body.Reasons);
         Assert.Contains(UrlReasons.Shortener, body.Reasons);
@@ -40,7 +40,7 @@ public sealed class ClassificationEndpointsTests
 
         var body = await response.Content.ReadFromJsonAsync<ClassificationResponse>(CancellationToken.None);
         Assert.NotNull(body);
-        Assert.Equal(LabelNames.Normal, body.Label);
+        Assert.Equal(MessageLabelNames.Normal, body.Label);
         Assert.Empty(body.Reasons);
     }
 
@@ -116,7 +116,7 @@ public sealed class ClassificationEndpointsTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ClassificationResponse>(CancellationToken.None);
         Assert.NotNull(body);
-        Assert.Equal(LabelNames.Scam, body.Label);
+        Assert.Equal(MessageLabelNames.Scam, body.Label);
     }
 
     private static async Task AssertProblemAsync(HttpResponseMessage response, HttpStatusCode expectedStatus, string? expectedCode)

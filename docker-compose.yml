@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    image: scam-detector-api:local
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Classification__ScamThreshold: "0.7"
+    volumes:
+      - ./models:/models:ro
+    restart: unless-stopped

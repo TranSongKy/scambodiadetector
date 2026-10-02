@@ -31,6 +31,8 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 
 - **Lựa chọn:** `MessageClassifier` kiểm tra text rỗng và dài quá `ClassificationLimits.MaxMessageLength` (2000) sau khi chuẩn hóa.
 - **Lý do:** Core được dùng chung bởi Api và Bot; đặt một chỗ duy nhất tránh lặp. Tầng Api chỉ ánh xạ `DomainError` sang `ProblemDetails`.
+- **Đo sau chuẩn hóa:** Tin gõ dạng NFD (tổ hợp dấu tách rời) dài gần gấp đôi khi đếm thô; đo sau NFC để không từ chối oan người dùng.
+- **Chặn ở biên:** Kestrel giới hạn body 32 KB (`Kestrel:Limits:MaxRequestBodySize`) nên chuẩn hóa/regex không bao giờ chạy trên input quá lớn.
 
 ## 006. Dò PII trong `validate_dataset.py` theo heuristic
 
@@ -55,3 +57,11 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 ## 009. Lỗi request ở môi trường Development
 
 - Minimal API ném `BadHttpRequestException` khi JSON sai ở Development; `BadHttpRequestExceptionHandler` chuyển thành `ProblemDetails` 400 để hành vi giống Production.
+
+## 010. Không tách từ (word segmentation) ở cả train và suy luận
+
+- **Bối cảnh:** PhoBERT gốc được pre-train trên văn bản đã tách từ bằng VnCoreNLP (`học_sinh`). Tách từ ở .NET cần port RDRSegmenter hoặc chạy Java.
+- **Lựa chọn:** Phiên bản đầu fine-tune và suy luận trên văn bản **không tách từ**, chỉ tách theo khoảng trắng. Notebook huấn luyện bắt buộc không gọi VnCoreNLP.
+- **Lý do:** Nhất quán giữa train và suy luận quan trọng hơn vài điểm F1; tin nhắn lừa đảo thường viết không dấu, sai chính tả nên lợi ích tách từ thấp hơn văn bản chuẩn.
+- **Đánh đổi:** Có thể kém hơn PhoBERT có tách từ. Nếu thí nghiệm cho thấy chênh lệch lớn (ghi trong `docs/experiments.md`), cần thêm `IWordSegmenter` ở Infrastructure và cập nhật notebook cùng lúc.
+- **Placeholder:** `<URL>`, `<PHONE>`... không đăng ký làm special token; BPE tách chúng thành subword giống nhau ở cả hai phía.

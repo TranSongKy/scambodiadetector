@@ -19,7 +19,19 @@ public sealed class LabelMappingTests
     [Fact]
     public void Parse_UnknownName_Throws()
     {
-        Assert.Throws<ArgumentException>(() => LabelMapping.Parse(["phishing"]));
+        Assert.Throws<ArgumentException>(() => LabelMapping.Parse(["phishing", "spam", "scam"]));
+    }
+
+    [Fact]
+    public void Parse_DuplicateLabel_ThrowsInvalidOperationException()
+    {
+        Assert.Throws<InvalidOperationException>(() => LabelMapping.Parse(["scam", "spam", "scam"]));
+    }
+
+    [Fact]
+    public void Parse_MissingLabel_ThrowsInvalidOperationException()
+    {
+        Assert.Throws<InvalidOperationException>(() => LabelMapping.Parse(["normal", "spam"]));
     }
 
     [Fact]

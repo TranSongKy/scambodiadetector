@@ -25,7 +25,7 @@ public static class ClassificationEndpoints
 
         var classification = result.Value;
         return TypedResults.Ok(new ClassificationResponse(
-            LabelNames.From(classification.Label),
+            MessageLabelNames.From(classification.Label),
             classification.Confidence,
             classification.Reasons));
     }

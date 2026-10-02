@@ -1,3 +1,5 @@
+using ScamDetector.Core.Classification;
+
 namespace ScamDetector.Infrastructure.Onnx;
 
 public sealed record OnnxModelOptions
@@ -14,7 +16,8 @@ public sealed record OnnxModelOptions
 
     public int MaxSequenceLength { get; init; } = DefaultMaxSequenceLength;
 
-    public IReadOnlyList<string> LabelOrder { get; init; } = ["normal", "spam", "scam"];
+    public IReadOnlyList<string> LabelOrder { get; init; } =
+        [MessageLabelNames.Normal, MessageLabelNames.Spam, MessageLabelNames.Scam];
 
     public string InputIdsName { get; init; } = "input_ids";
 

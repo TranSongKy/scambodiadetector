@@ -1,8 +1,6 @@
-using ScamDetector.Core.Classification;
+namespace ScamDetector.Core.Classification;
 
-namespace ScamDetector.Api.Classifications;
-
-public static class LabelNames
+public static class MessageLabelNames
 {
     public const string Normal = "normal";
     public const string Spam = "spam";
@@ -14,5 +12,13 @@ public static class LabelNames
         MessageLabel.Spam => Spam,
         MessageLabel.Scam => Scam,
         _ => throw new ArgumentOutOfRangeException(nameof(label), label, null),
+    };
+
+    public static MessageLabel Parse(string name) => name.Trim().ToUpperInvariant() switch
+    {
+        "NORMAL" => MessageLabel.Normal,
+        "SPAM" => MessageLabel.Spam,
+        "SCAM" => MessageLabel.Scam,
+        _ => throw new ArgumentException($"Unknown message label '{name}'.", nameof(name)),
     };
 }

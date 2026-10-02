@@ -4,8 +4,17 @@ namespace ScamDetector.Infrastructure.Onnx;
 
 public static class LabelMapping
 {
-    public static IReadOnlyList<MessageLabel> Parse(IReadOnlyList<string> labelOrder) =>
-        labelOrder.Select(label => Enum.Parse<MessageLabel>(label, ignoreCase: true)).ToList();
+    public static IReadOnlyList<MessageLabel> Parse(IReadOnlyList<string> labelOrder)
+    {
+        var labels = labelOrder.Select(MessageLabelNames.Parse).ToList();
+        var expectedLabels = Enum.GetValues<MessageLabel>();
+        if (labels.Count != expectedLabels.Length || labels.Distinct().Count() != expectedLabels.Length)
+        {
+            throw new InvalidOperationException(
+                $"Label order must list each of {string.Join(", ", expectedLabels.Select(MessageLabelNames.From))} exactly once.");
+        }
+        return labels;
+    }
 
     public static ModelPrediction ToPrediction(IReadOnlyList<MessageLabel> labels, IReadOnlyList<float> logits)
     {
