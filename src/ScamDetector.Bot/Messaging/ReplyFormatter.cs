@@ -7,19 +7,23 @@ namespace ScamDetector.Bot.Messaging;
 
 public static class ReplyFormatter
 {
-    private static readonly CultureInfo VietnameseCulture = CultureInfo.GetCultureInfo("vi-VN");
+    private const string VietnameseCultureName = "vi-VN";
+    private const string WholePercentFormat = "P0";
+    private const string BulletPrefix = "• ";
+
+    private static readonly CultureInfo VietnameseCulture = CultureInfo.GetCultureInfo(VietnameseCultureName);
 
     public static string FormatClassification(ClassificationResult classification)
     {
         var reply = new StringBuilder()
             .AppendLine(Verdict(classification.Label))
-            .AppendLine(CultureInfo.InvariantCulture, $"{BotReplies.ConfidenceLabel}: {classification.Confidence.ToString("P0", VietnameseCulture)}");
+            .AppendLine(CultureInfo.InvariantCulture, $"{BotReplies.ConfidenceLabel}: {classification.Confidence.ToString(WholePercentFormat, VietnameseCulture)}");
 
         var reasons = classification.Reasons.Distinct(StringComparer.Ordinal).Select(ReasonDescriptions.Describe).ToList();
         if (reasons.Count > 0)
         {
             reply.AppendLine(CultureInfo.InvariantCulture, $"{BotReplies.ReasonsLabel}:");
-            reasons.ForEach(reason => reply.AppendLine(CultureInfo.InvariantCulture, $"• {reason}"));
+            reasons.ForEach(reason => reply.AppendLine(CultureInfo.InvariantCulture, $"{BulletPrefix}{reason}"));
         }
         if (classification.Label == MessageLabel.Scam)
             reply.AppendLine().Append(BotReplies.ScamAdvice);

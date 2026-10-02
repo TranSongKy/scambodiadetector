@@ -25,6 +25,34 @@ jobs:
           name: test-results
           path: "**/TestResults/*.trx"
 
+  database:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: Ci-Only-Password-123
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P Ci-Only-Password-123 -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 20s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet tool restore
+      - name: Apply migrations to SQL Server
+        run: >-
+          dotnet ef database update
+          --project src/ScamDetector.Infrastructure
+          --connection "Server=localhost,1433;Database=ScamDetector;User Id=sa;Password=Ci-Only-Password-123;TrustServerCertificate=True"
+
   python:
     runs-on: ubuntu-latest
     steps:

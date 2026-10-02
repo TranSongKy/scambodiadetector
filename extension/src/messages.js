@@ -25,5 +25,13 @@ export const ERROR_MESSAGES = Object.freeze({
   modelUnavailable: "Hệ thống đang bảo trì, bạn thử lại sau nhé.",
   network: "Không kết nối được máy chủ. Kiểm tra địa chỉ API trong phần Cài đặt.",
   unexpected: "Có lỗi xảy ra, bạn thử lại sau nhé.",
-  invalidApiUrl: "Địa chỉ API không hợp lệ (cần bắt đầu bằng http:// hoặc https://).",
+  invalidApiUrl: "Địa chỉ API phải dùng https:// (chỉ cho phép http:// với localhost).",
+  timeout: "Máy chủ phản hồi quá lâu, bạn thử lại sau nhé.",
+});
+
+export const UI_TEXT = Object.freeze({
+  confidenceLabel: "Độ tin cậy",
+  contextMenuTitle: "Kiểm tra tin nhắn này có lừa đảo không",
+  saved: "Đã lưu.",
+  permissionDenied: "Cần cấp quyền truy cập địa chỉ này để kiểm tra tin nhắn.",
 });

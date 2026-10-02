@@ -21,6 +21,15 @@ ONNX_PARITY_TOLERANCE = 1e-3
 PARITY_SAMPLE_COUNT = 32
 SPLIT_NAMES = ("train", "val", "test")
 CHECKPOINT_DIRECTORY_SUFFIX = "-checkpoints"
+INPUT_IDS_NAME = "input_ids"
+ATTENTION_MASK_NAME = "attention_mask"
+LOGITS_NAME = "logits"
+ONNX_INPUT_NAMES = (INPUT_IDS_NAME, ATTENTION_MASK_NAME)
+EXPORT_SAMPLE_TEXT = "xin chào"
+DEFAULT_EPOCHS = 4.0
+DEFAULT_BATCH_SIZE = 16
+DEFAULT_LEARNING_RATE = 2e-5
+DEFAULT_WEIGHT_DECAY = 0.01
 
 
 @dataclass(frozen=True)
@@ -149,7 +158,7 @@ def predict(model: Any, tokenizer: Any, texts: list[str]) -> list[list[float]]:
     with torch.no_grad():
         for text in texts:
             encoded = tokenizer(text, truncation=True, max_length=MAX_SEQUENCE_LENGTH, return_tensors="pt")
-            encoded = {name: tensor.to(model.device) for name, tensor in encoded.items() if name != "token_type_ids"}
+            encoded = {name: encoded[name].to(model.device) for name in ONNX_INPUT_NAMES}
             logits.append(model(**encoded).logits[0].float().cpu().tolist())
     return logits
 
@@ -166,15 +175,15 @@ def export_onnx(model: Any, tokenizer: Any, output_dir: Path) -> Path:
             return self.wrapped(input_ids=input_ids, attention_mask=attention_mask).logits
 
     cpu_model = LogitsOnly(model.to("cpu").eval())
-    sample = tokenizer("xin chào", return_tensors="pt")
+    sample = tokenizer(EXPORT_SAMPLE_TEXT, return_tensors="pt")
     onnx_path = output_dir / ONNX_FILE_NAME
     torch.onnx.export(
         cpu_model,
-        (sample["input_ids"], sample["attention_mask"]),
+        tuple(sample[name] for name in ONNX_INPUT_NAMES),
         str(onnx_path),
-        input_names=["input_ids", "attention_mask"],
-        output_names=["logits"],
-        dynamic_axes={"input_ids": {0: "batch", 1: "sequence"}, "attention_mask": {0: "batch", 1: "sequence"}},
+        input_names=list(ONNX_INPUT_NAMES),
+        output_names=[LOGITS_NAME],
+        dynamic_axes={name: {0: "batch", 1: "sequence"} for name in ONNX_INPUT_NAMES},
         opset_version=ONNX_OPSET_VERSION,
         dynamo=False,
     )
@@ -190,8 +199,8 @@ def verify_onnx_parity(onnx_path: Path, tokenizer: Any, texts: list[str], expect
     max_difference = 0.0
     for text, expected in zip(texts, expected_logits, strict=True):
         encoded = tokenizer(text, truncation=True, max_length=MAX_SEQUENCE_LENGTH, return_tensors="np")
-        inputs = {name: encoded[name].astype(np.int64) for name in ("input_ids", "attention_mask")}
-        actual = session.run(["logits"], inputs)[0][0]
+        inputs = {name: encoded[name].astype(np.int64) for name in ONNX_INPUT_NAMES}
+        actual = session.run([LOGITS_NAME], inputs)[0][0]
         max_difference = max(max_difference, float(np.abs(actual - np.array(expected)).max()))
     return max_difference
 
@@ -199,7 +208,7 @@ def verify_onnx_parity(onnx_path: Path, tokenizer: Any, texts: list[str], expect
 def write_tokenizer_golden(tokenizer: Any, texts: list[str], output_dir: Path) -> Path:
     golden_path = output_dir / TOKENIZER_GOLDEN_FILE_NAME
     cases = [
-        {"text": text, "ids": tokenizer(text, truncation=True, max_length=MAX_SEQUENCE_LENGTH)["input_ids"]}
+        {"text": text, "ids": tokenizer(text, truncation=True, max_length=MAX_SEQUENCE_LENGTH)[INPUT_IDS_NAME]}
         for text in texts
     ]
     golden_path.write_text(json.dumps(cases, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -211,10 +220,10 @@ def parse_arguments(arguments: list[str]) -> argparse.Namespace:
     parser.add_argument("splits_dir", type=Path, help="Thư mục có train.csv, val.csv, test.csv")
     parser.add_argument("output_dir", type=Path, help="Nơi ghi scam-detector.onnx, vocab.txt, bpe.codes")
     parser.add_argument("--base-model", default=BASE_MODEL_NAME)
-    parser.add_argument("--epochs", type=float, default=4)
-    parser.add_argument("--batch-size", type=int, default=16)
-    parser.add_argument("--learning-rate", type=float, default=2e-5)
-    parser.add_argument("--weight-decay", type=float, default=0.01)
+    parser.add_argument("--epochs", type=float, default=DEFAULT_EPOCHS)
+    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--learning-rate", type=float, default=DEFAULT_LEARNING_RATE)
+    parser.add_argument("--weight-decay", type=float, default=DEFAULT_WEIGHT_DECAY)
     return parser.parse_args(arguments)
 
 

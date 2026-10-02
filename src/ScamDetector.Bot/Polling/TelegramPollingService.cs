@@ -19,11 +19,10 @@ public sealed partial class TelegramPollingService(
             {
                 await PollOnceAsync(stoppingToken);
             }
-            catch (Exception exception) when (exception is HttpRequestException or TelegramApiException or TaskCanceledException
-                                              && !stoppingToken.IsCancellationRequested)
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {
                 LogPollingFailed(logger, exception);
-                await Task.Delay(TimeSpan.FromSeconds(options.ErrorRetryDelaySeconds), stoppingToken);
+                await Task.Delay(RetryDelay(exception), stoppingToken);
             }
         }
     }
@@ -34,29 +33,32 @@ public sealed partial class TelegramPollingService(
         foreach (var update in updates)
         {
             _nextOffset = Math.Max(_nextOffset, update.UpdateId + 1);
-            if (update.Message is null)
-                continue;
-
-            var reply = await replyBuilder.BuildReplyAsync(update.Message, cancellationToken);
-            if (reply is not null)
-                await SendReplySafelyAsync(update, reply, cancellationToken);
+            if (update.Message is not null)
+                await HandleMessageSafelyAsync(update.UpdateId, update.Message, cancellationToken);
         }
     }
 
-    private async Task SendReplySafelyAsync(TelegramUpdate update, string reply, CancellationToken cancellationToken)
+    private async Task HandleMessageSafelyAsync(long updateId, TelegramMessage message, CancellationToken cancellationToken)
     {
         try
         {
-            await telegramClient.SendReplyAsync(update.Message!, reply, cancellationToken);
+            var reply = await replyBuilder.BuildReplyAsync(message, cancellationToken);
+            if (reply is not null)
+                await telegramClient.SendReplyAsync(message, reply, cancellationToken);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TelegramApiException)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
-            LogReplyFailed(logger, update.UpdateId, exception);
+            LogUpdateFailed(logger, updateId, exception);
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Sending reply for update {UpdateId} failed")]
-    private static partial void LogReplyFailed(ILogger logger, long updateId, Exception exception);
+    private TimeSpan RetryDelay(Exception exception) =>
+        exception is TelegramApiException { RetryAfter: { } retryAfter }
+            ? retryAfter
+            : TimeSpan.FromSeconds(options.ErrorRetryDelaySeconds);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Handling update {UpdateId} failed")]
+    private static partial void LogUpdateFailed(ILogger logger, long updateId, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Telegram polling failed, retrying")]
     private static partial void LogPollingFailed(ILogger logger, Exception exception);

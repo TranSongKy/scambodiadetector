@@ -49,4 +49,36 @@ public sealed class MessageLabelNamesTests
 
         Assert.Equal(labels, roundTripped);
     }
+
+    [Theory]
+    [InlineData("scam", MessageLabel.Scam)]
+    [InlineData("SPAM", MessageLabel.Spam)]
+    [InlineData(" Normal ", MessageLabel.Normal)]
+    public void TryParse_KnownNameAnyCase_ReturnsTrueWithLabel(string name, MessageLabel expected)
+    {
+        var parsed = MessageLabelNames.TryParse(name, out var label);
+
+        Assert.True(parsed);
+        Assert.Equal(expected, label);
+    }
+
+    [Theory]
+    [InlineData("phishing")]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("2")]
+    public void TryParse_UnknownName_ReturnsFalse(string name)
+    {
+        var parsed = MessageLabelNames.TryParse(name, out _);
+
+        Assert.False(parsed);
+    }
+
+    [Fact]
+    public void TryParse_NullName_ReturnsFalse()
+    {
+        var parsed = MessageLabelNames.TryParse(null, out _);
+
+        Assert.False(parsed);
+    }
 }

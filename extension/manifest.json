@@ -3,6 +3,7 @@
   "name": "Scambodia Detector",
   "description": "Kiểm tra tin nhắn tiếng Việt có dấu hiệu lừa đảo hay không.",
   "version": "0.1.0",
+  "minimum_chrome_version": "127",
   "permissions": ["contextMenus", "storage"],
   "host_permissions": ["http://localhost:8080/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],

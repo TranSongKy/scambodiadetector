@@ -124,4 +124,21 @@ public sealed class TelegramPollingServiceTests
         var sent = Assert.Single(client.SentReplies);
         Assert.Equal(BotReplies.Welcome, sent.Text);
     }
+
+    [Fact]
+    public async Task PollOnceAsync_ClassifierThrowsUnexpectedException_ContinuesWithNextUpdate()
+    {
+        var client = new FakeTelegramClient([TextUpdate(1, "mot"), TextUpdate(2, "/start")]);
+        var classifier = new FakeMessageClassifier(new InvalidOperationException("model crashed"));
+        var service = new TelegramPollingService(
+            client,
+            new BotReplyBuilder(classifier),
+            new TelegramOptions { BotToken = "fake-token" },
+            NullLogger<TelegramPollingService>.Instance);
+
+        await service.PollOnceAsync(CancellationToken.None);
+
+        var reply = Assert.Single(client.SentReplies);
+        Assert.Equal(BotReplies.Welcome, reply.Text);
+    }
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using ScamDetector.Bot.Telegram;
 using ScamDetector.Bot.Tests.Fakes;
@@ -96,5 +97,39 @@ public sealed class TelegramApiClientTests
 
         await Assert.ThrowsAsync<TelegramApiException>(
             () => client.SendReplyAsync(message, "text", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetUpdatesAsync_TooManyRequests_ThrowsWithRetryAfter()
+    {
+        using var handler = new FakeHttpMessageHandler(
+            """{"ok":false,"error_code":429,"description":"Too Many Requests","parameters":{"retry_after":7}}""",
+            HttpStatusCode.TooManyRequests);
+        var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<TelegramApiException>(() => client.GetUpdatesAsync(0, CancellationToken.None));
+
+        Assert.Equal(TimeSpan.FromSeconds(7), exception.RetryAfter);
+    }
+
+    [Fact]
+    public async Task GetUpdatesAsync_HtmlErrorBody_ThrowsTelegramApiException()
+    {
+        using var handler = new FakeHttpMessageHandler("<html>502 Bad Gateway</html>", HttpStatusCode.BadGateway);
+        var client = CreateClient(handler);
+
+        var exception = await Assert.ThrowsAsync<TelegramApiException>(() => client.GetUpdatesAsync(0, CancellationToken.None));
+
+        Assert.Null(exception.RetryAfter);
+    }
+
+    [Fact]
+    public async Task SendReplyAsync_ServerErrorWithOkBody_ThrowsTelegramApiException()
+    {
+        using var handler = new FakeHttpMessageHandler("""{"ok":true,"result":null}""", HttpStatusCode.InternalServerError);
+        var client = CreateClient(handler);
+        var message = new TelegramMessage(1, new TelegramChat(42), "hi", null);
+
+        await Assert.ThrowsAsync<TelegramApiException>(() => client.SendReplyAsync(message, "reply", CancellationToken.None));
     }
 }

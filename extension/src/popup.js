@@ -1,5 +1,6 @@
 import { ClassificationError, classify, validateText } from "./classification.js";
-import { ERROR_MESSAGES } from "./messages.js";
+import { MAX_MESSAGE_LENGTH } from "./constants.js";
+import { ERROR_MESSAGES, UI_TEXT } from "./messages.js";
 import { loadApiBaseUrl, takePendingText } from "./settings.js";
 
 const elements = {
@@ -23,7 +24,7 @@ function showError(message) {
 function showResult(formatted) {
   elements.error.hidden = true;
   elements.verdict.textContent = formatted.verdict;
-  elements.confidence.textContent = `Độ tin cậy: ${formatted.confidence}`;
+  elements.confidence.textContent = `${UI_TEXT.confidenceLabel}: ${formatted.confidence}`;
   elements.reasons.replaceChildren(
     ...formatted.reasons.map((reason) => Object.assign(document.createElement("li"), { textContent: reason })),
   );
@@ -57,6 +58,7 @@ elements.openOptions.addEventListener("click", (event) => {
 });
 
 await chrome.action.setBadgeText({ text: "" });
+elements.message.maxLength = MAX_MESSAGE_LENGTH;
 const pendingText = await takePendingText();
 if (pendingText) {
   elements.message.value = pendingText;

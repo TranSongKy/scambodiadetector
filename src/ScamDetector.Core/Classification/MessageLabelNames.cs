@@ -14,11 +14,16 @@ public static class MessageLabelNames
         _ => throw new ArgumentOutOfRangeException(nameof(label), label, null),
     };
 
-    public static MessageLabel Parse(string name) => name.Trim().ToUpperInvariant() switch
+    public static MessageLabel Parse(string name) =>
+        TryParse(name, out var label) ? label : throw new ArgumentException($"Unknown message label '{name}'.", nameof(name));
+
+    public static bool TryParse(string? name, out MessageLabel label)
     {
-        "NORMAL" => MessageLabel.Normal,
-        "SPAM" => MessageLabel.Spam,
-        "SCAM" => MessageLabel.Scam,
-        _ => throw new ArgumentException($"Unknown message label '{name}'.", nameof(name)),
-    };
+        var trimmed = name?.Trim();
+        MessageLabel? parsed = Enum.GetValues<MessageLabel>()
+            .Select(candidate => (MessageLabel?)candidate)
+            .FirstOrDefault(candidate => string.Equals(From(candidate!.Value), trimmed, StringComparison.OrdinalIgnoreCase));
+        label = parsed.GetValueOrDefault();
+        return parsed.HasValue;
+    }
 }

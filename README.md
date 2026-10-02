@@ -117,6 +117,19 @@ Lỗi trả về theo RFC 9457 (`application/problem+json`):
 | 400 | JSON sai | — |
 | 503 | Chưa có file model | — |
 
+### `POST /api/v1/reports`
+
+Người dùng báo một tin nhắn là `scam`, `spam` hoặc `normal` để bổ sung dữ liệu. Tin được chuẩn hóa và che PII **trước khi lưu**; database không bao giờ chứa tin gốc.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/reports \
+  -H 'content-type: application/json' \
+  -d '{"text":"Goi 0901234567 de nhan qua","label":"scam","channel":"extension"}'
+# 201 Created, Location: /api/v1/reports/{id}, body {"id":"..."}
+```
+
+`channel` là `api` (mặc định), `telegram` hoặc `extension`. Lỗi: 400 `report.invalid_label`, `report.invalid_channel`, `classification.empty_text`, `classification.text_too_long`; 503 khi chưa cấu hình database.
+
 ### `GET /health`
 
 `200 Healthy` khi model đã nạp, `503 Unhealthy` khi thiếu file model.
@@ -140,6 +153,18 @@ Người dùng gửi hoặc forward tin nhắn nghi ngờ cho bot, bot trả l�
 
 Test: `cd extension && npm test` (Node 22, không cần cài gói). CI đóng gói `scambodia-extension.zip` để tải lên Chrome Web Store.
 
+## Database
+
+SQL Server qua EF Core, bảng `MessageReports`. Cấu hình bằng `ConnectionStrings:ScamDetector`; để trống thì API vẫn chạy, chỉ `/api/v1/reports` trả 503.
+
+```bash
+dotnet tool restore
+dotnet ef migrations add <TenMigration> --project src/ScamDetector.Infrastructure --output-dir Persistence/Migrations
+dotnet ef database update --project src/ScamDetector.Infrastructure --connection "<connection string>"
+```
+
+Đặt `Database:ApplyMigrationsOnStartup=true` để API tự chạy migration khi khởi động (compose đã bật). Test `MigrationTests` báo lỗi nếu đổi model mà quên tạo migration.
+
 ## Deploy bằng Docker
 
 ```bash
@@ -149,15 +174,18 @@ docker run -p 8080:8080 -v "$PWD/models:/models:ro" scam-detector-api
 docker build --build-arg PROJECT=ScamDetector.Bot -t scam-detector-bot .
 docker run -e Telegram__BotToken=<token> -v "$PWD/models:/models:ro" scam-detector-bot
 
-# hoặc bằng compose (bot cần TELEGRAM_BOT_TOKEN trong file .env)
-docker compose up --build              # chỉ api
-docker compose --profile bot up --build # api + bot
+# hoặc bằng compose: SQL Server + api (+ bot)
+cp .env.example .env                    # sửa MSSQL_SA_PASSWORD, TELEGRAM_BOT_TOKEN
+docker compose up --build               # sqlserver + api, tự chạy migration
+docker compose --profile bot up --build # thêm bot
 ```
 
 - Image chạy bằng user không phải root, cổng `8080`.
 - Model mount vào `/models` (chỉ đọc). Đổi đường dẫn bằng biến môi trường `OnnxModel__ModelPath`, `OnnxModel__VocabularyPath`, `OnnxModel__BpeCodesPath`.
 - Đổi ngưỡng bằng `Classification__ScamThreshold` (trong khoảng (0, 1], sai thì app dừng khi khởi động).
 - Dùng `/health` làm readiness probe.
+- Container chạy bằng UID 1654 (`app`); file trong `models/` phải đọc được bởi user này (`chmod a+r models/*`).
+- Không commit `.env`; token và mật khẩu chỉ nằm trong biến môi trường hoặc secret store của nền tảng deploy.
 
 ## Hợp đồng giữa notebook huấn luyện và backend
 
@@ -171,4 +199,4 @@ Model export phải khớp các điểm sau, nếu không kết quả sẽ sai m
 
 ## CI
 
-`.github/workflows/ci.yml` chạy build và test .NET, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container.
+`.github/workflows/ci.yml` chạy build và test .NET, chạy migration trên SQL Server thật, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container.

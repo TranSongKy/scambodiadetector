@@ -1,4 +1,4 @@
-import { CLASSIFICATIONS_PATH, MAX_MESSAGE_LENGTH } from "./constants.js";
+import { CLASSIFICATIONS_PATH, LOOPBACK_HOSTS, MAX_MESSAGE_LENGTH, REQUEST_TIMEOUT_MS } from "./constants.js";
 import { ERROR_MESSAGES, REASON_DESCRIPTIONS, SCAM_ADVICE, VERDICTS } from "./messages.js";
 
 const HTTP_SERVICE_UNAVAILABLE = 503;
@@ -22,7 +22,9 @@ export function validateText(text) {
 export function normalizeApiBaseUrl(value) {
   try {
     const url = new URL((value ?? "").trim());
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
+    const isSecure = url.protocol === "https:";
+    const isLoopbackHttp = url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname);
+    if (!isSecure && !isLoopbackHttp) {
       return null;
     }
     return url.origin + url.pathname.replace(/\/+$/, "");
@@ -57,16 +59,17 @@ export async function problemMessage(response) {
   }
 }
 
-export async function classify(apiBaseUrl, text, fetchImplementation = fetch) {
+export async function classify(apiBaseUrl, text, fetchImplementation = fetch, timeoutMs = REQUEST_TIMEOUT_MS) {
   let response;
   try {
     response = await fetchImplementation(apiBaseUrl + CLASSIFICATIONS_PATH, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-  } catch {
-    throw new ClassificationError(ERROR_MESSAGES.network);
+  } catch (error) {
+    throw new ClassificationError(error?.name === "TimeoutError" ? ERROR_MESSAGES.timeout : ERROR_MESSAGES.network);
   }
   if (!response.ok) {
     throw new ClassificationError(await problemMessage(response));

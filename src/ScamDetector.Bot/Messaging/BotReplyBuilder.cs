@@ -6,6 +6,8 @@ namespace ScamDetector.Bot.Messaging;
 
 public sealed class BotReplyBuilder(IMessageClassifier classifier)
 {
+    private const char BotMentionSeparator = '@';
+
     public async Task<string?> BuildReplyAsync(TelegramMessage message, CancellationToken cancellationToken)
     {
         var content = message.Content;
@@ -27,6 +29,10 @@ public sealed class BotReplyBuilder(IMessageClassifier classifier)
         }
     }
 
-    private static bool IsCommand(string content, string command) =>
-        content.Trim().Split(' ', 2)[0].Split('@', 2)[0].Equals(command, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCommand(string content, string command)
+    {
+        var firstWord = content.Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+        return firstWord.Split(BotMentionSeparator, 2)[0].Equals(command, StringComparison.OrdinalIgnoreCase);
+    }
 }

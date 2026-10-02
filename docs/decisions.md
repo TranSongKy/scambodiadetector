@@ -88,3 +88,12 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Lý do:** Trang của extension có host permission thì không bị CORS chặn, nên backend không phải mở CORS cho `chrome-extension://*`. Không có bước build giúp review và đóng gói đơn giản.
 - **Kiểm tra chéo:** Test `node --test` so danh sách mã lý do (`REASON_DESCRIPTIONS`) với các hằng số trong `ClassificationReasons.cs` và `UrlReasons.cs`.
 - **Quyền riêng tư:** Extension chỉ gửi đoạn text người dùng chủ động dán hoặc bôi đen; không đọc nội dung trang tự động.
+
+## 014. Lưu báo cáo người dùng đã ẩn danh trong SQL Server
+
+- **Lựa chọn:** Bảng `MessageReports` (EF Core, SQL Server) lưu tin người dùng báo là `scam`/`spam`/`normal` kèm kênh và thời điểm. `MessageReportService` (Core) chuẩn hóa và che PII bằng `ModelInputMasker` trước khi gọi repository, nên tin gốc không bao giờ tới database (`docs/conventions.md` mục 4.4).
+- **Khóa chính:** `Guid.CreateVersion7` theo `TimeProvider` (test được). SQL Server sắp `uniqueidentifier` theo byte cuối nên v7 không tuần tự hoàn toàn trên clustered index; chấp nhận được với lượng báo cáo nhỏ, có index riêng trên `CreatedAt`.
+- **Không có database:** Thiếu connection string thì đăng ký `UnavailableMessageReportRepository`, endpoint trả 503; phân loại vẫn hoạt động.
+- **Gói:** `Microsoft.EntityFrameworkCore.SqlServer` (provider), `Microsoft.EntityFrameworkCore.Design` (`PrivateAssets=all`, chỉ cho `dotnet ef`), `Microsoft.EntityFrameworkCore.Sqlite` (chỉ trong Infrastructure.Tests, test repository không cần SQL Server). `dotnet-ef` là tool cục bộ (`dotnet-tools.json`).
+- **Kiểm tra:** `MigrationTests` so model với snapshot; CI chạy `dotnet ef database update` trên container SQL Server thật.
+- **Dữ liệu báo cáo** không tự vào `dataset.csv`: cần người gán nhãn xem lại rồi xuất qua quy trình ở `docs/data-schema.md`.

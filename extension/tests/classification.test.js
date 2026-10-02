@@ -27,11 +27,29 @@ test("validateText rejects empty, whitespace and too long text", () => {
   assert.equal(validateText("a".repeat(MAX_MESSAGE_LENGTH)), null);
 });
 
-test("normalizeApiBaseUrl keeps http(s) origins and strips trailing slashes", () => {
+test("normalizeApiBaseUrl allows https and loopback http only, stripping trailing slashes", () => {
   assert.equal(normalizeApiBaseUrl(" https://api.example.vn/ "), "https://api.example.vn");
   assert.equal(normalizeApiBaseUrl("http://localhost:8080/scam//"), "http://localhost:8080/scam");
+  assert.equal(normalizeApiBaseUrl("http://127.0.0.1:5899"), "http://127.0.0.1:5899");
+  assert.equal(normalizeApiBaseUrl("http://api.example.vn"), null);
   assert.equal(normalizeApiBaseUrl("ftp://example.vn"), null);
   assert.equal(normalizeApiBaseUrl("not a url"), null);
+});
+
+test("classify reports a timeout when the server does not answer in time", async () => {
+  const hangingFetch = (_url, init) =>
+    new Promise((_resolve, reject) => {
+      const keepAlive = setTimeout(() => reject(new Error("fetch was not aborted")), 5000);
+      init.signal.addEventListener("abort", () => {
+        clearTimeout(keepAlive);
+        reject(init.signal.reason);
+      });
+    });
+
+  await assert.rejects(classify(API, "xin chao", hangingFetch, 10), (error) => {
+    assert.equal(error.message, ERROR_MESSAGES.timeout);
+    return true;
+  });
 });
 
 test("formatResult builds Vietnamese scam verdict with unique reasons and advice", () => {

@@ -1,4 +1,5 @@
 import { CONTEXT_MENU_ID } from "./constants.js";
+import { UI_TEXT } from "./messages.js";
 import { storePendingText } from "./settings.js";
 
 const PENDING_BADGE_TEXT = "!";
@@ -7,7 +8,7 @@ const PENDING_BADGE_COLOR = "#d93025";
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: CONTEXT_MENU_ID,
-    title: "Kiểm tra tin nhắn này có lừa đảo không",
+    title: UI_TEXT.contextMenuTitle,
     contexts: ["selection"],
   });
 });

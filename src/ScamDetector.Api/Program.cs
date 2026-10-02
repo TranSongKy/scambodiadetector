@@ -1,5 +1,6 @@
 using ScamDetector.Api.Classifications;
 using ScamDetector.Api.ErrorHandling;
+using ScamDetector.Api.Reports;
 using ScamDetector.Core.Classification;
 using ScamDetector.Infrastructure.DependencyInjection;
 using ScamDetector.Infrastructure.HealthChecks;
@@ -9,9 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<BadHttpRequestExceptionHandler>();
-builder.Services.AddExceptionHandler<ScamModelUnavailableExceptionHandler>();
+builder.Services.AddExceptionHandler<ServiceUnavailableExceptionHandler>();
 builder.Services.AddScamDetector(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.AddScamModelHealthCheck();
+builder.Services.AddScamDetectorPersistence(builder.Configuration);
 
 var app = builder.Build();
 
@@ -23,5 +25,7 @@ app.UseStatusCodePages();
 
 app.MapHealthChecks(HealthCheckRegistration.HealthRoute);
 app.MapClassificationEndpoints();
+app.MapReportEndpoints();
 
-app.Run();
+await app.Services.ApplyMigrationsIfConfiguredAsync(app.Lifetime.ApplicationStopping);
+await app.RunAsync();

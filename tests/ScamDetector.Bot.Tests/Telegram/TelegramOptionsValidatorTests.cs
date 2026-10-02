@@ -53,4 +53,30 @@ public sealed class TelegramOptionsValidatorTests
 
         Assert.Equal("https://api.telegram.org/botfake-token/", address.AbsoluteUri);
     }
+
+    [Fact]
+    public void BotApiAddress_RealTokenFormatWithColon_StaysUnderApiBaseUrl()
+    {
+        var options = new TelegramOptions { BotToken = "123456:ABC-def_ghi" };
+
+        var address = TelegramOptionsValidator.BotApiAddress(options);
+
+        Assert.Equal("https://api.telegram.org/bot123456:ABC-def_ghi/", address.AbsoluteUri);
+    }
+
+    [Fact]
+    public void Validate_PlainHttpRemoteApiBaseUrl_Throws()
+    {
+        var options = new TelegramOptions { BotToken = "fake-token", ApiBaseUrl = new Uri("http://telegram.example") };
+
+        Assert.Throws<InvalidOperationException>(() => TelegramOptionsValidator.Validate(options));
+    }
+
+    [Fact]
+    public void Validate_PlainHttpLoopbackApiBaseUrl_IsAllowed()
+    {
+        var options = new TelegramOptions { BotToken = "fake-token", ApiBaseUrl = new Uri("http://127.0.0.1:5901") };
+
+        Assert.Same(options, TelegramOptionsValidator.Validate(options));
+    }
 }

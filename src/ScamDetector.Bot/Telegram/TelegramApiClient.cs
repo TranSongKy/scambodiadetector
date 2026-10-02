@@ -11,17 +11,16 @@ public sealed class TelegramApiClient(HttpClient httpClient, TelegramOptions opt
     private const string GetUpdatesMethod = "getUpdates";
     private const string SendMessageMethod = "sendMessage";
     private const string AllowedUpdates = "[\"message\"]";
+    private const string EmptyResponseDescription = "empty response";
 
     public async Task<IReadOnlyList<TelegramUpdate>> GetUpdatesAsync(long offset, CancellationToken cancellationToken)
     {
         var query = string.Create(
             CultureInfo.InvariantCulture,
             $"{GetUpdatesMethod}?offset={offset}&timeout={options.PollingTimeoutSeconds}&allowed_updates={Uri.EscapeDataString(AllowedUpdates)}");
-        var response = await httpClient.GetFromJsonAsync<TelegramResponse<List<TelegramUpdate>>>(
-            new Uri(query, UriKind.Relative),
-            TelegramJson.Options,
-            cancellationToken);
-        return EnsureOk(response) ?? [];
+        using var httpResponse = await httpClient.GetAsync(new Uri(query, UriKind.Relative), cancellationToken);
+        var updates = await ReadResultAsync<List<TelegramUpdate>>(httpResponse, cancellationToken);
+        return updates ?? [];
     }
 
     public async Task SendReplyAsync(TelegramMessage message, string text, CancellationToken cancellationToken)
@@ -31,18 +30,28 @@ public sealed class TelegramApiClient(HttpClient httpClient, TelegramOptions opt
             JsonSerializer.Serialize(request, TelegramJson.Options),
             Encoding.UTF8,
             MediaTypeNames.Application.Json);
-        using var httpResponse = await httpClient.PostAsync(
-            new Uri(SendMessageMethod, UriKind.Relative),
-            content,
-            cancellationToken);
-        var response = await httpResponse.Content.ReadFromJsonAsync<TelegramResponse<TelegramMessage>>(
-            TelegramJson.Options,
-            cancellationToken);
-        EnsureOk(response);
+        using var httpResponse = await httpClient.PostAsync(new Uri(SendMessageMethod, UriKind.Relative), content, cancellationToken);
+        await ReadResultAsync<TelegramMessage>(httpResponse, cancellationToken);
     }
 
-    private static TResult? EnsureOk<TResult>(TelegramResponse<TResult>? response) =>
-        response is { Ok: true }
-            ? response.Result
-            : throw new TelegramApiException($"Telegram API error: {response?.Description ?? "empty response"}");
+    private static async Task<TResult?> ReadResultAsync<TResult>(HttpResponseMessage httpResponse, CancellationToken cancellationToken)
+    {
+        TelegramResponse<TResult>? response;
+        try
+        {
+            response = await httpResponse.Content.ReadFromJsonAsync<TelegramResponse<TResult>>(TelegramJson.Options, cancellationToken);
+        }
+        catch (JsonException exception)
+        {
+            throw new TelegramApiException($"Telegram API returned HTTP {(int)httpResponse.StatusCode} with an invalid body.", exception);
+        }
+
+        if (response is { Ok: true } && httpResponse.IsSuccessStatusCode)
+            return response.Result;
+
+        var retryAfter = response?.Parameters?.RetryAfter is { } seconds ? TimeSpan.FromSeconds(seconds) : (TimeSpan?)null;
+        throw new TelegramApiException(
+            $"Telegram API error {(int)httpResponse.StatusCode}: {response?.Description ?? EmptyResponseDescription}",
+            retryAfter);
+    }
 }

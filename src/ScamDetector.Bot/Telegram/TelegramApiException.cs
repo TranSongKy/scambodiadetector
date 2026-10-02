@@ -15,4 +15,12 @@ public sealed class TelegramApiException : Exception
         : base(message, innerException)
     {
     }
+
+    public TelegramApiException(string message, TimeSpan? retryAfter)
+        : base(message)
+    {
+        RetryAfter = retryAfter;
+    }
+
+    public TimeSpan? RetryAfter { get; }
 }

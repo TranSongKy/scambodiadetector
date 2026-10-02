@@ -21,6 +21,7 @@ public sealed class BotReplyBuilderTests
     [InlineData("/start")]
     [InlineData("/help")]
     [InlineData("/start@SomeBot")]
+    [InlineData("/start\nxin chao")]
     [InlineData("/HELP extra")]
     [InlineData("  /Start  ")]
     public async Task BuildReplyAsync_CommandText_ReturnsWelcomeWithoutClassifying(string text)
