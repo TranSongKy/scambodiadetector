@@ -16,6 +16,8 @@ public sealed record OnnxModelOptions
 
     public int MaxSequenceLength { get; init; } = DefaultMaxSequenceLength;
 
+    public int IntraOpNumThreads { get; init; }
+
     public IReadOnlyList<string> LabelOrder { get; init; } =
         [MessageLabelNames.Normal, MessageLabelNames.Spam, MessageLabelNames.Scam];
 

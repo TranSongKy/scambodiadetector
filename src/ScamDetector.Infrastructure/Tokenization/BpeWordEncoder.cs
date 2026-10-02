@@ -1,8 +1,27 @@
+using System.Collections.Concurrent;
+
 namespace ScamDetector.Infrastructure.Tokenization;
 
 public sealed class BpeWordEncoder(BpeMergeRanks mergeRanks)
 {
+    public const int MaxCachedWords = 50_000;
+
+    private readonly ConcurrentDictionary<string, IReadOnlyList<string>> _cache = new(StringComparer.Ordinal);
+
+    public int CachedWordCount => _cache.Count;
+
     public IReadOnlyList<string> Encode(string word)
+    {
+        if (_cache.TryGetValue(word, out var cached))
+            return cached;
+
+        var subwords = EncodeUncached(word);
+        if (_cache.Count < MaxCachedWords)
+            _cache.TryAdd(word, subwords);
+        return subwords;
+    }
+
+    private string[] EncodeUncached(string word)
     {
         var symbols = SplitIntoSymbols(word);
         while (symbols.Count > 1 && FindBestMerge(symbols) is { } mergeIndex)
@@ -35,9 +54,9 @@ public sealed class BpeWordEncoder(BpeMergeRanks mergeRanks)
         return bestIndex;
     }
 
-    private static List<string> ToSubwords(List<string> symbols)
+    private static string[] ToSubwords(List<string> symbols)
     {
-        var subwords = symbols.Select(symbol => symbol + BpeSymbols.Continuation).ToList();
+        var subwords = symbols.Select(symbol => symbol + BpeSymbols.Continuation).ToArray();
         subwords[^1] = symbols[^1][..^BpeSymbols.EndOfWord.Length];
         return subwords;
     }

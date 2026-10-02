@@ -53,4 +53,26 @@ public sealed class BpeWordEncoderTests
 
         Assert.Equal(["z@@", "q"], subwords);
     }
+
+    [Fact]
+    public void Encode_SameWordTwice_ReturnsSameResultFromCache()
+    {
+        var encoder = new BpeWordEncoder(BpeMergeRanks.FromLines(["x i 70"]));
+
+        var first = encoder.Encode("xin");
+        var second = encoder.Encode("xin");
+
+        Assert.Same(first, second);
+        Assert.Equal(1, encoder.CachedWordCount);
+    }
+
+    [Fact]
+    public void Encode_ConcurrentCalls_ReturnConsistentResults()
+    {
+        var encoder = new BpeWordEncoder(BpeMergeRanks.FromLines(["c h 100", "ch à 90", "chà o</w> 80"]));
+
+        var results = Enumerable.Range(0, 200).AsParallel().Select(_ => string.Join('|', encoder.Encode("chào"))).Distinct().ToList();
+
+        Assert.Equal(["chào"], results);
+    }
 }

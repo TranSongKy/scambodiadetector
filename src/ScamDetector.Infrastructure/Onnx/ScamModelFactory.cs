@@ -19,6 +19,14 @@ public static class ScamModelFactory
         var tokenizer = new PhoBertTokenizer(
             PhoBertVocabulary.Load(vocabularyPath),
             new BpeWordEncoder(BpeMergeRanks.Load(bpeCodesPath)));
-        return new OnnxScamModel(new InferenceSession(modelPath), tokenizer, options);
+        using var sessionOptions = CreateSessionOptions(options);
+        return new OnnxScamModel(new InferenceSession(modelPath, sessionOptions), tokenizer, options);
     }
+
+    private static SessionOptions CreateSessionOptions(OnnxModelOptions options) =>
+        new()
+        {
+            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+            IntraOpNumThreads = options.IntraOpNumThreads,
+        };
 }
