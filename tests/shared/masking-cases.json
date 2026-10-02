@@ -1,0 +1,206 @@
+[
+  {
+    "input": "Mai 7h hop nhom o thu vien nha.",
+    "expected": "Mai 7h hop nhom o thu vien nha."
+  },
+  {
+    "input": "Vao https://vcb-xacminh.xyz/login ngay.",
+    "expected": "Vao <URL> ngay."
+  },
+  {
+    "input": "Click bit.ly/abc123, het han hom nay!",
+    "expected": "Click <URL>, het han hom nay!"
+  },
+  {
+    "input": "Truy cap http://192.168.1.10/pay de nhan qua",
+    "expected": "Truy cap <URL> de nhan qua"
+  },
+  {
+    "input": "Xem shopee.vn/sale va www.example.com/a?b=1",
+    "expected": "Xem <URL> va <URL>"
+  },
+  {
+    "input": "Lien he 090 123 4567 hoac 0901.234.567",
+    "expected": "Lien he <PHONE> hoac <PHONE>"
+  },
+  {
+    "input": "Goi +84 901 234 567 hoac +84901234567 hoac 84901234567",
+    "expected": "Goi <PHONE> hoac <PHONE> hoac <PHONE>"
+  },
+  {
+    "input": "So 0123456789 la hotline",
+    "expected": "So <PHONE> la hotline"
+  },
+  {
+    "input": "Han 01.02.2026 10.30 den",
+    "expected": "Han 01.02.2026 10.30 den"
+  },
+  {
+    "input": "Hotline 1900 5454 13",
+    "expected": "Hotline 1900 5454 13"
+  },
+  {
+    "input": "Chuyen 500.000.000d truoc 19h30",
+    "expected": "Chuyen 500.000.000d truoc 19h30"
+  },
+  {
+    "input": "Ma OTP cua ban la 123456",
+    "expected": "Ma OTP cua ban la <OTP>"
+  },
+  {
+    "input": "OTP: 123 456 het han luc 10:30",
+    "expected": "OTP: <OTP> het han luc 10:30"
+  },
+  {
+    "input": "Mã xác minh 8472 nhé",
+    "expected": "Mã xác minh <OTP> nhé"
+  },
+  {
+    "input": "MÃ GIAO DỊCH 9182-7364",
+    "expected": "MÃ GIAO DỊCH <OTP>"
+  },
+  {
+    "input": "Ma OTP la 123456789",
+    "expected": "Ma OTP la <ACCOUNT>"
+  },
+  {
+    "input": "CCCD 012345678901 va CMND 123456789",
+    "expected": "CCCD <ID> va CMND <ID>"
+  },
+  {
+    "input": "Căn cước công dân của bạn: 001203004005",
+    "expected": "Căn cước công dân của bạn: <ID>"
+  },
+  {
+    "input": "STK 1234567890123 Vietcombank",
+    "expected": "STK <ACCOUNT> Vietcombank"
+  },
+  {
+    "input": "The 1234 5678 9012 3456 het han",
+    "expected": "The <ACCOUNT> het han"
+  },
+  {
+    "input": "Mail ho.tro@vcb-support.com. Xong",
+    "expected": "Mail <EMAIL>. Xong"
+  },
+  {
+    "input": "Ma van don VN1234567890VN",
+    "expected": "Ma van don VN<ACCOUNT>VN"
+  },
+  {
+    "input": "Vao <URL> va goi <PHONE> nhap <OTP>",
+    "expected": "Vao <URL> va goi <PHONE> nhap <OTP>"
+  },
+  {
+    "input": "Tài khoản Vietcombank của quý khách bị khóa, xác minh tại vcb.vip/x",
+    "expected": "Tài khoản Vietcombank của quý khách bị khóa, xác minh tại <URL>"
+  },
+  {
+    "input": "Ma OTP 123456 het han 2026",
+    "expected": "Ma OTP <OTP> het han 2026"
+  },
+  {
+    "input": "OTP 482913 goi 1900 5454 13",
+    "expected": "OTP <OTP> goi 1900 5454 13"
+  },
+  {
+    "input": "VCB: Ma OTP 123456, GD 5.000.000VND luc 10:30 05/10/2026",
+    "expected": "VCB: Ma OTP <OTP>, GD 5.000.000VND luc 10:30 05/10/2026"
+  },
+  {
+    "input": "OTP 482913 phi 15000d",
+    "expected": "OTP <OTP> phi 15000d"
+  },
+  {
+    "input": "Ma xac minh la 1234, 5678",
+    "expected": "Ma xac minh la <OTP>, 5678"
+  },
+  {
+    "input": "OTP 111222 va 333444",
+    "expected": "OTP <OTP> va 333444"
+  },
+  {
+    "input": "Hotline 1900.1234 hoac 1800-1234 hoac 19001234",
+    "expected": "Hotline 1900.1234 hoac 1800-1234 hoac 19001234"
+  },
+  {
+    "input": "Soan TC gui 9029 phi 15000d",
+    "expected": "Soan TC gui 9029 phi 15000d"
+  },
+  {
+    "input": "Don hang giao ngay 2026-10-05 luc 19:30",
+    "expected": "Don hang giao ngay 2026-10-05 luc 19:30"
+  },
+  {
+    "input": "Lai suat 0.99%/thang, v1.2.3, 192.168.0.1, TP.HCM",
+    "expected": "Lai suat 0.99%/thang, v1.2.3, 192.168.0.1, TP.HCM"
+  },
+  {
+    "input": "Cam on ban.Me nho nhe",
+    "expected": "Cam on ban.Me nho nhe"
+  },
+  {
+    "input": "Chuyen 100000000 dong ngay",
+    "expected": "Chuyen 100000000 dong ngay"
+  },
+  {
+    "input": "Chuyen gap 500000000d",
+    "expected": "Chuyen gap 500000000d"
+  },
+  {
+    "input": "Gui 5000000000 vnd",
+    "expected": "Gui 5000000000 vnd"
+  },
+  {
+    "input": "So tai khoan: 1234 5678 9012",
+    "expected": "So tai khoan: <ACCOUNT>"
+  },
+  {
+    "input": "STK: 1234 5678 9012 3456 789",
+    "expected": "STK: <ACCOUNT>"
+  },
+  {
+    "input": "cmnd 123 456 789",
+    "expected": "cmnd <ID>"
+  },
+  {
+    "input": "cmnd so 123.456.789",
+    "expected": "cmnd so <ID>"
+  },
+  {
+    "input": "CCCD 0123 4567 8901",
+    "expected": "CCCD <ID>"
+  },
+  {
+    "input": "Căn cước công dân số 001 203 004 005",
+    "expected": "Căn cước công dân số <ID>"
+  },
+  {
+    "input": "Gọi (028) 3822 1234",
+    "expected": "Gọi <PHONE>"
+  },
+  {
+    "input": "SDT 09 12 34 56 78",
+    "expected": "SDT <PHONE>"
+  },
+  {
+    "input": "Goi (+84) 901234567 ngay",
+    "expected": "Goi <PHONE> ngay"
+  },
+  {
+    "input": "Nhap ma 123456 de xac nhan",
+    "expected": "Nhap ma <OTP> de xac nhan"
+  },
+  {
+    "input": "Ma kich hoat 654321",
+    "expected": "Ma kich hoat <OTP>"
+  },
+  {
+    "input": "Vào Facebook.com nhé",
+    "expected": "Vào <URL> nhé"
+  },
+  {
+    "input": "VCB.COM.VN thong bao",
+    "expected": "<URL> thong bao"
+  }
+]

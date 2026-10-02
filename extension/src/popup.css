@@ -1,0 +1,61 @@
+body {
+  width: 340px;
+  margin: 12px;
+  font: 14px/1.4 system-ui, sans-serif;
+  color: #202124;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 6px;
+}
+
+#verdict {
+  font-weight: 600;
+  margin: 12px 0 4px;
+}
+
+#result.scam #verdict,
+#error {
+  color: #d93025;
+}
+
+#advice {
+  background: #fce8e6;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+footer {
+  margin-top: 12px;
+  text-align: right;
+}
+
+#report {
+  margin-top: 12px;
+  border-top: 1px solid #dadce0;
+  padding-top: 8px;
+  font-size: 13px;
+}
+
+#report-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+#report-buttons button {
+  margin-top: 0;
+  flex: 1;
+}

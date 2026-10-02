@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ScamDetector.Api/ScamDetector.Api.csproj" />
+    <Project Path="src/ScamDetector.Bot/ScamDetector.Bot.csproj" />
+    <Project Path="src/ScamDetector.Core/ScamDetector.Core.csproj" />
+    <Project Path="src/ScamDetector.Infrastructure/ScamDetector.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ScamDetector.Api.Tests/ScamDetector.Api.Tests.csproj" />
+    <Project Path="tests/ScamDetector.Bot.Tests/ScamDetector.Bot.Tests.csproj" />
+    <Project Path="tests/ScamDetector.Core.Tests/ScamDetector.Core.Tests.csproj" />
+    <Project Path="tests/ScamDetector.Infrastructure.Tests/ScamDetector.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,57 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Đặt MSSQL_SA_PASSWORD (mật khẩu mạnh, không chứa ; hoặc =) trong file .env}
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      args:
+        PROJECT: ScamDetector.Api
+    image: scam-detector-api:local
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Classification__ScamThreshold: "0.7"
+      ConnectionStrings__ScamDetector: Server=sqlserver;Database=ScamDetector;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True
+      Database__ApplyMigrationsOnStartup: "true"
+    volumes:
+      - ./models:/models:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  bot:
+    profiles: ["bot"]
+    build:
+      context: .
+      args:
+        PROJECT: ScamDetector.Bot
+    image: scam-detector-bot:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Classification__ScamThreshold: "0.7"
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      ConnectionStrings__ScamDetector: Server=sqlserver;Database=ScamDetector;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True
+    volumes:
+      - ./models:/models:ro
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  sqlserver-data:
