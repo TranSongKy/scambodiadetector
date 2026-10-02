@@ -5,6 +5,7 @@ using ScamDetector.Api.ErrorHandling;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<BadHttpRequestExceptionHandler>();
 builder.Services.AddExceptionHandler<ScamModelUnavailableExceptionHandler>();
 builder.Services.AddScamDetector(builder.Configuration, builder.Environment.ContentRootPath);
 

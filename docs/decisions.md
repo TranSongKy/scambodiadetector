@@ -37,3 +37,21 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Lựa chọn:** Ghép các chữ số bị tách bằng dấu cách/chấm/gạch rồi mới dò số điện thoại; dò riêng số thẻ dạng `4-4-4-4`, dãy 9–19 chữ số liền (CMND/CCCD, số tài khoản), mã OTP đi sau từ khóa "OTP"/"mã xác nhận", URL thô chưa thay bằng `<URL>`, và placeholder không có trong danh sách của `docs/data-schema.md`.
 - **Lý do:** Lọt PII vào `data/processed/` là rủi ro lớn nhất vì file này được commit.
 - **Đánh đổi:** Số tiền viết liền ≥ 9 chữ số (ví dụ `500000000`) sẽ bị báo nhầm; nên viết có dấu chấm. Tên người (`<NAME>`) không thể dò tự động, vẫn phải kiểm tra tay.
+
+## 007. Gói NuGet/pip cho Infrastructure và Api
+
+- `Microsoft.ML.OnnxRuntime` (Infrastructure): chạy model ONNX trên CPU, đúng quyết định 001. Không dùng `Microsoft.ML` hay `Microsoft.ML.Tokenizers` để giữ phụ thuộc tối thiểu; tokenizer fastBPE của PhoBERT tự viết (~100 dòng).
+- `Microsoft.AspNetCore.Mvc.Testing` (Api.Tests): `WebApplicationFactory` cho integration test. Không có cách tương đương mà không thêm gói.
+- `onnx` (pip, chỉ dùng khi tạo lại fixture): `tests/ScamDetector.Infrastructure.Tests/Fixtures/generate_fixture_model.py` sinh model 410 byte để test `OnnxScamModel` thật. File `.onnx` đã commit nên chạy test không cần cài `onnx`.
+- Composition root đặt ở Api (`AddScamDetector`) thay vì Infrastructure, để Infrastructure không cần các gói `Microsoft.Extensions.*`.
+
+## 008. Che PII ở đầu vào model khi suy luận
+
+- **Bối cảnh:** Dữ liệu train đã ẩn danh (`<URL>`, `<PHONE>`...), còn tin nhắn thật khi suy luận thì chưa. Nếu không che, model thấy phân phối khác lúc train.
+- **Lựa chọn:** `ModelInputMasker` (Core) che theo thứ tự email → URL → OTP → CCCD/CMND → điện thoại → số tài khoản. OTP và `<ID>` chỉ che khi có từ khóa đứng trước (`otp`, `mã xác nhận`, `cccd`...). URL inspector vẫn nhận text chưa che để phân tích tên miền.
+- **Ràng buộc:** `scripts/validate_dataset.py` và `scripts/anonymize.py` phải dùng cùng regex. Khi sửa một bên phải sửa bên kia và chạy lại test.
+- **Chưa làm:** `<NAME>` không che tự động khi suy luận; dữ liệu train nên hạn chế `<NAME>` (xem `docs/data-schema.md`).
+
+## 009. Lỗi request ở môi trường Development
+
+- Minimal API ném `BadHttpRequestException` khi JSON sai ở Development; `BadHttpRequestExceptionHandler` chuyển thành `ProblemDetails` 400 để hành vi giống Production.
