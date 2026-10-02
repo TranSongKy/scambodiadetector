@@ -1,6 +1,6 @@
 using ScamDetector.Core.Classification;
 
-namespace ScamDetector.Api.DependencyInjection;
+namespace ScamDetector.Infrastructure.DependencyInjection;
 
 public static class ClassificationOptionsValidator
 {

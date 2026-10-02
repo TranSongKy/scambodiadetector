@@ -1,12 +1,30 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      args:
+        PROJECT: ScamDetector.Api
     image: scam-detector-api:local
     ports:
       - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Classification__ScamThreshold: "0.7"
+    volumes:
+      - ./models:/models:ro
+    restart: unless-stopped
+
+  bot:
+    profiles: ["bot"]
+    build:
+      context: .
+      args:
+        PROJECT: ScamDetector.Bot
+    image: scam-detector-bot:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Classification__ScamThreshold: "0.7"
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:?Đặt TELEGRAM_BOT_TOKEN trong file .env}
     volumes:
       - ./models:/models:ro
     restart: unless-stopped

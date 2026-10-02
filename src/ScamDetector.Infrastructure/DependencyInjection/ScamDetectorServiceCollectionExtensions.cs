@@ -1,14 +1,13 @@
-using ScamDetector.Api.HealthChecks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using ScamDetector.Core.Classification;
 using ScamDetector.Core.Urls;
 using ScamDetector.Infrastructure.Onnx;
 
-namespace ScamDetector.Api.DependencyInjection;
+namespace ScamDetector.Infrastructure.DependencyInjection;
 
-public static class ServiceCollectionExtensions
+public static class ScamDetectorServiceCollectionExtensions
 {
-    private const string ModelHealthCheckName = "scam-model";
-
     public static IServiceCollection AddScamDetector(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -25,7 +24,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(_ => ScamModelFactory.Create(onnxModelOptions, contentRootPath));
         services.AddSingleton<IUrlInspector, RuleBasedUrlInspector>();
         services.AddSingleton<IMessageClassifier, MessageClassifier>();
-        services.AddHealthChecks().AddCheck<ScamModelHealthCheck>(ModelHealthCheckName);
 
         return services;
     }

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ScamDetector.Core.Classification;
 using ScamDetector.Infrastructure.Onnx;
 
-namespace ScamDetector.Api.HealthChecks;
+namespace ScamDetector.Infrastructure.HealthChecks;
 
 public sealed class ScamModelHealthCheck(IScamModel model) : IHealthCheck
 {

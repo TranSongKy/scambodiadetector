@@ -14,7 +14,8 @@ Quy ước code và dữ liệu: [`CLAUDE.md`](CLAUDE.md), [`docs/conventions.md
 src/ScamDetector.Core            Domain: phân loại, ngưỡng scam, chuẩn hóa/che PII, kiểm tra URL
 src/ScamDetector.Infrastructure  Tokenizer PhoBERT (fastBPE), model ONNX
 src/ScamDetector.Api             Minimal API: POST /api/v1/classifications, /health
-tests/                           xUnit: Core, Infrastructure (model ONNX fixture), Api (integration)
+src/ScamDetector.Bot             Telegram bot (long polling), /health
+tests/                           xUnit: Core, Infrastructure (model ONNX fixture), Api (integration), Bot
 scripts/                         masking.py, anonymize.py, validate_dataset.py, split_dataset.py và test Python
 data/processed/dataset.csv       Dữ liệu đã ẩn danh (data/raw/ không bao giờ commit)
 models/                          File model khi chạy (không commit)
@@ -118,13 +119,29 @@ Lỗi trả về theo RFC 9457 (`application/problem+json`):
 
 `200 Healthy` khi model đã nạp, `503 Unhealthy` khi thiếu file model.
 
+## Telegram bot
+
+1. Tạo bot với [@BotFather](https://t.me/BotFather), lấy token.
+2. Chạy:
+
+```bash
+Telegram__BotToken=<token> dotnet run --project src/ScamDetector.Bot
+```
+
+Người dùng gửi hoặc forward tin nhắn nghi ngờ cho bot, bot trả lời kết luận, độ tin cậy, lý do bằng tiếng Việt và lời khuyên khi là lừa đảo. `/start`, `/help` hiện hướng dẫn. Bot không log nội dung tin nhắn.
+
 ## Deploy bằng Docker
 
 ```bash
 docker build -t scam-detector-api .
 docker run -p 8080:8080 -v "$PWD/models:/models:ro" scam-detector-api
-# hoặc
-docker compose up --build
+
+docker build --build-arg PROJECT=ScamDetector.Bot -t scam-detector-bot .
+docker run -e Telegram__BotToken=<token> -v "$PWD/models:/models:ro" scam-detector-bot
+
+# hoặc bằng compose (bot cần TELEGRAM_BOT_TOKEN trong file .env)
+docker compose up --build              # chỉ api
+docker compose --profile bot up --build # api + bot
 ```
 
 - Image chạy bằng user không phải root, cổng `8080`.

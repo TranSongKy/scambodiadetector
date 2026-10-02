@@ -45,7 +45,7 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - `Microsoft.ML.OnnxRuntime` (Infrastructure): chạy model ONNX trên CPU, đúng quyết định 001. Không dùng `Microsoft.ML` hay `Microsoft.ML.Tokenizers` để giữ phụ thuộc tối thiểu; tokenizer fastBPE của PhoBERT tự viết (~100 dòng).
 - `Microsoft.AspNetCore.Mvc.Testing` (Api.Tests): `WebApplicationFactory` cho integration test. Không có cách tương đương mà không thêm gói.
 - `onnx` (pip, chỉ dùng khi tạo lại fixture): `tests/ScamDetector.Infrastructure.Tests/Fixtures/generate_fixture_model.py` sinh model 410 byte để test `OnnxScamModel` thật. File `.onnx` đã commit nên chạy test không cần cài `onnx`.
-- Composition root đặt ở Api (`AddScamDetector`) thay vì Infrastructure, để Infrastructure không cần các gói `Microsoft.Extensions.*`.
+- Đăng ký DI (`AddScamDetector`) và health check model nằm ở Infrastructure để Api và Bot dùng chung; Infrastructure tham chiếu shared framework `Microsoft.AspNetCore.App` (có sẵn trong runtime, không phải gói NuGet).
 
 ## 008. Che PII ở đầu vào model khi suy luận
 
@@ -73,3 +73,11 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Gói (chỉ cho huấn luyện, `requirements-train.txt`):** `torch`, `transformers`, `datasets`, `accelerate` để fine-tune; `onnx`, `onnxruntime` để export và kiểm tra ONNX; `numpy`. Không dùng `scikit-learn`: F1 tự tính (có unit test) để bớt một phụ thuộc. Backend không cần các gói này.
 - **Kiểm tra tokenizer:** `scripts/VerifyTokenizer.cs` chạy tokenizer .NET trên `tokenizer-golden.json` do HuggingFace sinh ra; phải khớp 100% trước khi deploy model.
 - **Tokenizer chậm (`use_fast=False`):** dùng `PhobertTokenizer` gốc để có đúng `vocab.txt` và `bpe.codes` mà backend đọc.
+
+## 012. Telegram bot gọi thẳng Bot API, chạy long polling
+
+- **Lựa chọn:** `ScamDetector.Bot` dùng `HttpClient` gọi `getUpdates`/`sendMessage`, không dùng thư viện `Telegram.Bot`. Chạy long polling trong `BackgroundService`, không cần URL công khai hay webhook.
+- **Lý do:** Chỉ cần 2 method của Bot API; tự viết ~60 dòng thay vì thêm một gói lớn (quy tắc 6). Long polling dễ chạy ở máy dev và container sau NAT.
+- **Tầng:** Bot gọi `IMessageClassifier` của Core qua DI dùng chung (`AddScamDetector` trong Infrastructure, quyết định 007 được cập nhật: Infrastructure tham chiếu shared framework `Microsoft.AspNetCore.App`, không thêm gói NuGet). Phần giao tiếp Telegram nằm trong Bot vì chỉ Bot dùng.
+- **Bảo mật:** Không log nội dung tin nhắn. Token chỉ lấy từ cấu hình/biến môi trường `Telegram__BotToken`, không commit.
+- **Lỗi:** Gửi trả lời thất bại cho một chat (ví dụ người dùng chặn bot) chỉ ghi log rồi xử lý tin tiếp theo; lỗi `getUpdates` thì chờ `ErrorRetryDelaySeconds` rồi thử lại.
