@@ -15,6 +15,7 @@ src/ScamDetector.Core            Domain: phân loại, ngưỡng scam, chuẩn h
 src/ScamDetector.Infrastructure  Tokenizer PhoBERT (fastBPE), model ONNX
 src/ScamDetector.Api             Minimal API: POST /api/v1/classifications, /health
 src/ScamDetector.Bot             Telegram bot (long polling), /health
+extension/                       Chrome extension (Manifest V3)
 tests/                           xUnit: Core, Infrastructure (model ONNX fixture), Api (integration), Bot
 scripts/                         masking.py, anonymize.py, validate_dataset.py, split_dataset.py và test Python
 data/processed/dataset.csv       Dữ liệu đã ẩn danh (data/raw/ không bao giờ commit)
@@ -35,6 +36,7 @@ dotnet test
 python -m unittest discover -s scripts/tests -t .
 ruff check . && ruff format --check .
 python scripts/validate_dataset.py data/processed/dataset.csv
+(cd extension && npm test)
 ```
 
 ## Quy trình dữ liệu
@@ -130,6 +132,14 @@ Telegram__BotToken=<token> dotnet run --project src/ScamDetector.Bot
 
 Người dùng gửi hoặc forward tin nhắn nghi ngờ cho bot, bot trả lời kết luận, độ tin cậy, lý do bằng tiếng Việt và lời khuyên khi là lừa đảo. `/start`, `/help` hiện hướng dẫn. Bot không log nội dung tin nhắn.
 
+## Chrome extension
+
+1. Mở `chrome://extensions`, bật **Developer mode**, chọn **Load unpacked** và trỏ tới thư mục `extension/`.
+2. Mặc định gọi API ở `http://localhost:8080`. Đổi trong **Cài đặt** của extension; Chrome sẽ hỏi quyền truy cập địa chỉ mới.
+3. Dùng: bấm biểu tượng extension và dán tin nhắn, hoặc bôi đen tin nhắn trên trang web → chuột phải → **Kiểm tra tin nhắn này có lừa đảo không**.
+
+Test: `cd extension && npm test` (Node 22, không cần cài gói). CI đóng gói `scambodia-extension.zip` để tải lên Chrome Web Store.
+
 ## Deploy bằng Docker
 
 ```bash
@@ -161,4 +171,4 @@ Model export phải khớp các điểm sau, nếu không kết quả sẽ sai m
 
 ## CI
 
-`.github/workflows/ci.yml` chạy build và test .NET, ruff và test Python, validate dataset (khi có mẫu), build Docker image và smoke test container.
+`.github/workflows/ci.yml` chạy build và test .NET, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container.

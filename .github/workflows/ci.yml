@@ -44,6 +44,23 @@ jobs:
             echo "dataset.csv chưa có mẫu, bỏ qua bước validate."
           fi
 
+  extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm test
+      - run: zip -r ../scambodia-extension.zip manifest.json src
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: scambodia-extension.zip
+
   docker:
     runs-on: ubuntu-latest
     needs: dotnet

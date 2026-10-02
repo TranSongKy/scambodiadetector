@@ -81,3 +81,10 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Tầng:** Bot gọi `IMessageClassifier` của Core qua DI dùng chung (`AddScamDetector` trong Infrastructure, quyết định 007 được cập nhật: Infrastructure tham chiếu shared framework `Microsoft.AspNetCore.App`, không thêm gói NuGet). Phần giao tiếp Telegram nằm trong Bot vì chỉ Bot dùng.
 - **Bảo mật:** Không log nội dung tin nhắn. Token chỉ lấy từ cấu hình/biến môi trường `Telegram__BotToken`, không commit.
 - **Lỗi:** Gửi trả lời thất bại cho một chat (ví dụ người dùng chặn bot) chỉ ghi log rồi xử lý tin tiếp theo; lỗi `getUpdates` thì chờ `ErrorRetryDelaySeconds` rồi thử lại.
+
+## 013. Chrome extension không cần CORS và không cần build
+
+- **Lựa chọn:** Manifest V3, JavaScript module thuần (không bundler, không gói npm). Gọi API từ popup với `host_permissions`; địa chỉ API khác mặc định được xin quyền qua `optional_host_permissions` khi lưu cài đặt.
+- **Lý do:** Trang của extension có host permission thì không bị CORS chặn, nên backend không phải mở CORS cho `chrome-extension://*`. Không có bước build giúp review và đóng gói đơn giản.
+- **Kiểm tra chéo:** Test `node --test` so danh sách mã lý do (`REASON_DESCRIPTIONS`) với các hằng số trong `ClassificationReasons.cs` và `UrlReasons.cs`.
+- **Quyền riêng tư:** Extension chỉ gửi đoạn text người dùng chủ động dán hoặc bôi đen; không đọc nội dung trang tự động.
