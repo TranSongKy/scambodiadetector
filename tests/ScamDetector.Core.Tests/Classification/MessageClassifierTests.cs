@@ -195,4 +195,35 @@ public sealed class MessageClassifierTests
         Assert.NotEqual(MessageLabel.Scam, result.Value.Label);
         Assert.Contains(ClassificationReasons.ScamBelowThreshold, result.Value.Reasons);
     }
+
+    [Fact]
+    public async Task ClassifyAsync_TextWithUrl_PassesMaskedTextToModel()
+    {
+        var classifier = CreateClassifier();
+
+        await classifier.ClassifyAsync("Nhấn http://a.example/x để nhận quà", CancellationToken.None);
+
+        Assert.Equal("Nhấn <URL> để nhận quà", _model.ReceivedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_TextWithUrl_PassesUnmaskedTextToUrlInspector()
+    {
+        var classifier = CreateClassifier();
+
+        await classifier.ClassifyAsync("Nhấn http://a.example/x để nhận quà", CancellationToken.None);
+
+        Assert.Equal("Nhấn http://a.example/x để nhận quà", _urlInspector.ReceivedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_TextWithPhoneAndEmail_PassesMaskedTextToModelOnly()
+    {
+        var classifier = CreateClassifier();
+
+        await classifier.ClassifyAsync("gọi 0900000000 hoặc a@b.example", CancellationToken.None);
+
+        Assert.Equal("gọi <PHONE> hoặc <EMAIL>", _model.ReceivedText);
+        Assert.Equal("gọi 0900000000 hoặc a@b.example", _urlInspector.ReceivedText);
+    }
 }

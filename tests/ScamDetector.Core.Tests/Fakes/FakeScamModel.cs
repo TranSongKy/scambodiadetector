@@ -10,10 +10,10 @@ public sealed class FakeScamModel(ModelPrediction prediction) : IScamModel
 
     public CancellationToken ReceivedToken { get; private set; }
 
-    public Task<ModelPrediction> PredictAsync(string normalizedText, CancellationToken cancellationToken)
+    public Task<ModelPrediction> PredictAsync(string maskedText, CancellationToken cancellationToken)
     {
         CallCount++;
-        ReceivedText = normalizedText;
+        ReceivedText = maskedText;
         ReceivedToken = cancellationToken;
         return Task.FromResult(prediction);
     }

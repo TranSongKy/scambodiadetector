@@ -39,21 +39,25 @@ CSV_FALSE = "false"
 BOM = "\ufeff"
 ID_PATTERN = re.compile(r"^msg_\d{6}$")
 URL_PLACEHOLDER = "<URL>"
+URL_TOP_LEVEL_DOMAINS = (
+    "com|vn|net|org|info|xyz|top|me|ly|io|cc|online|site|shop|link|club|icu|vip|live|buzz|tk|ml|ga|cf|gq|gl|gd|id|at|gy"
+)
 RAW_URL_PATTERN = re.compile(
-    r"(https?://|www\.|\b[\w-]+\.(com|vn|net|org|info|xyz|top|me|ly|io|cc|online|site|shop|link)\b)",
+    rf"((https?://|www\.)[^\s<>\"]+|\b([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+({URL_TOP_LEVEL_DOMAINS})\b)",
     re.IGNORECASE,
 )
 PLACEHOLDERS = {"<PHONE>", "<ACCOUNT>", "<NAME>", "<EMAIL>", URL_PLACEHOLDER, "<ID>", "<OTP>"}
 PLACEHOLDER_PATTERN = re.compile(r"<[A-Z_]+>")
-DIGIT_SEPARATOR_PATTERN = re.compile(r"(?<=\d)[ .\-](?=\d)")
-SEPARATED_DIGIT_PII_PATTERNS = {
-    "phone": re.compile(r"(?<!\d)(\+?84|0)\d{9,10}(?!\d)"),
-}
 PII_PATTERNS = {
+    "phone": re.compile(r"(?<![\d.,/])(\+?84|0)[ .\-]?(\d{9,10}|\d{2,4}([ .\-]\d{3,4}){2,3})(?![\d.,/]?\d)"),
     "card_number": re.compile(r"(?<!\d)\d{4}([ .\-]\d{4}){3}(?!\d)"),
-    "email": re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"),
+    "email": re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+"),
     "long_number": re.compile(r"(?<!\d)\d{9,19}(?!\d)"),
-    "otp": re.compile(r"(otp|m[ãa] x[áa]c (nh[ậa]n|th[ựu]c))\D{0,20}\d{4,8}(?!\d)", re.IGNORECASE),
+    "otp": re.compile(
+        r"(otp|m[ãa] (x[áa]c (nh[ậa]n|th[ựu]c|minh)|b[ảa]o m[ậa]t|giao d[ịi]ch))\D{0,20}"
+        r"(?<![\d.,/])\d([ .\-]?\d){3,7}(?![\d.,/]?\d)",
+        re.IGNORECASE,
+    ),
     "url": RAW_URL_PATTERN,
 }
 MIN_TEXT_LENGTH = 5
@@ -71,10 +75,7 @@ def has_url(text: str) -> bool:
 
 
 def find_pii(text: str) -> list[str]:
-    joined_digits_text = DIGIT_SEPARATOR_PATTERN.sub("", text)
-    found = [name for name, pattern in SEPARATED_DIGIT_PII_PATTERNS.items() if pattern.search(joined_digits_text)]
-    found.extend(name for name, pattern in PII_PATTERNS.items() if pattern.search(text))
-    return found
+    return [name for name, pattern in PII_PATTERNS.items() if pattern.search(text)]
 
 
 def validate_row(row: dict[str | None, str | None], line_number: int) -> list[str]:
