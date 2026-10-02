@@ -8,7 +8,7 @@ from masking import URL_TOP_LEVEL_DOMAINS, mask
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 URL_EXTRACTOR_PATH = REPOSITORY_ROOT / "src" / "ScamDetector.Core" / "Urls" / "UrlExtractor.cs"
 MASKING_CASES_PATH = REPOSITORY_ROOT / "tests" / "shared" / "masking-cases.json"
-CSHARP_TLD_GROUP = re.compile(r"\\\.\)\+\(\?:([a-z|]+)\)")
+CSHARP_TLD_GROUP = re.compile(r"\\\.\)\+\(\?-i:\(\?:([a-z|]+)\)")
 
 
 class RegexParityTests(unittest.TestCase):
@@ -26,6 +26,13 @@ class RegexParityTests(unittest.TestCase):
         for case in cases:
             with self.subTest(text=case["input"]):
                 self.assertEqual(case["expected"], mask(case["input"]))
+
+    def test_python_mask_is_idempotent_on_shared_cases(self) -> None:
+        cases = json.loads(MASKING_CASES_PATH.read_text(encoding="utf-8"))
+
+        for case in cases:
+            with self.subTest(text=case["expected"]):
+                self.assertEqual(case["expected"], mask(case["expected"]))
 
 
 if __name__ == "__main__":

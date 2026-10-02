@@ -17,22 +17,34 @@ TRAILING_URL_PUNCTUATION = ".,;:!?)]}\"'"
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
 URL_PATTERN = re.compile(
-    rf"(?:https?://|www\.)[^\s<>\"]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:{URL_TOP_LEVEL_DOMAINS})\b(?:/[^\s<>\"]*)?",
+    rf"(?:https?://|www\.)[^\s<>\"]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
+    rf"(?-i:(?:{URL_TOP_LEVEL_DOMAINS})|(?:{URL_TOP_LEVEL_DOMAINS.upper()}))\b(?:/[^\s<>\"]*)?",
     re.IGNORECASE,
 )
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+KEYWORD_GAP = r"[^\d<>]"
 OTP_CANDIDATE_PATTERN = re.compile(r"(?<![\d.,/])\d(?:[ .\-]?\d){3,7}(?![\d.,/]?\d)")
 OTP_KEYWORD_PATTERN = re.compile(
-    rf"(?:otp|m[ãa] (?:x[áa]c (?:nh[ậa]n|th[ựu]c|minh)|b[ảa]o m[ậa]t|giao d[ịi]ch))\D{{0,{OTP_KEYWORD_WINDOW}}}$",
+    r"(?:otp|m[ãa] (?:x[áa]c (?:nh[ậa]n|th[ựu]c|minh)|b[ảa]o m[ậa]t|giao d[ịi]ch|k[íi]ch ho[ạa]t)|nh[ậa]p m[ãa])"
+    rf"{KEYWORD_GAP}{{0,{OTP_KEYWORD_WINDOW}}}$",
     re.IGNORECASE,
 )
-ID_CANDIDATE_PATTERN = re.compile(r"(?<!\d)(?:\d{12}|\d{9})(?!\d)")
+ID_CANDIDATE_PATTERN = re.compile(
+    r"(?<![\d.,/])(?:\d{12}|\d{9}|\d{3}(?:[ .\-]\d{3}){2,3}|\d{4}(?:[ .\-]\d{4}){2})(?![\d.,/]?\d)"
+)
 ID_KEYWORD_PATTERN = re.compile(
-    rf"(?:cccd|cmnd|c[ăa]n c[ưu][ớo]c|ch[ứu]ng minh|đ[ịi]nh danh|dinh danh)\D{{0,{ID_KEYWORD_WINDOW}}}$",
+    rf"(?:cccd|cmnd|c[ăa]n c[ưu][ớo]c|ch[ứu]ng minh|đ[ịi]nh danh|dinh danh){KEYWORD_GAP}{{0,{ID_KEYWORD_WINDOW}}}$",
     re.IGNORECASE,
 )
-PHONE_PATTERN = re.compile(r"(?<![\d.,/])(?:\+?84|0)[ .\-]?(?:\d{9,10}|\d{2,4}(?:[ .\-]\d{3,4}){2,3})(?![\d.,/]?\d)")
-ACCOUNT_PATTERN = re.compile(r"(?<!\d)\d{4}(?:[ .\-]\d{4}){3}(?!\d)|(?<!\d)\d{9,19}(?!\d)")
+PHONE_PATTERN = re.compile(
+    r"(?<![\d.,/])(?:(?:\(\+?84\)|\+?84|0)[ .\-]?(?:\d{9,10}|\d{2,4}(?:[ .\-]\d{3,4}){2,3}|\d(?:[ .\-]\d{2}){4})"
+    r"|\(0\d{1,3}\)[ .\-]?\d{3,4}[ .\-]?\d{3,4})(?![\d.,/]?\d)"
+)
+ACCOUNT_PATTERN = re.compile(
+    r"(?<!\d)\d{4}(?:[ .\-]\d{4}){2,3}(?:[ .\-]\d{1,3})?(?!\d)"
+    r"|(?<!\d)\d{9,19}(?!\d)(?!\s?(?:đồng|dong|vnđ|vnd|đ|d)(?![^\W\d_]))",
+    re.IGNORECASE,
+)
 
 
 def normalize_text(text: str) -> str:

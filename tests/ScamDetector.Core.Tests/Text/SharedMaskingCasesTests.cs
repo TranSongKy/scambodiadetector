@@ -25,4 +25,15 @@ public sealed class SharedMaskingCasesTests
 
         Assert.Equal(expected, masked);
     }
+
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public void Mask_AlreadyMaskedSharedCase_IsUnchanged(string input, string expected)
+    {
+        Assert.NotNull(input);
+
+        var maskedAgain = ModelInputMasker.Mask(expected);
+
+        Assert.Equal(expected, maskedAgain);
+    }
 }
