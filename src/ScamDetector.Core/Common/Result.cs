@@ -2,7 +2,7 @@ namespace ScamDetector.Core.Common;
 
 public class Result
 {
-    protected Result(DomainError? error)
+    private protected Result(DomainError? error)
     {
         Error = error;
     }

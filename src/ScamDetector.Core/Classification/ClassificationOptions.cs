@@ -4,5 +4,7 @@ public sealed record ClassificationOptions
 {
     public const string SectionName = "Classification";
 
-    public double ScamThreshold { get; init; } = 0.7;
+    public const double DefaultScamThreshold = 0.7;
+
+    public double ScamThreshold { get; init; } = DefaultScamThreshold;
 }

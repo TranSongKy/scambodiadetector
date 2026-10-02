@@ -10,10 +10,18 @@ VAL_RATIO = 0.15
 TEST_RATIO = 0.15
 SYNTHETIC_SOURCE = "synthetic"
 SPLIT_NAMES = ("train", "val", "test")
+BOM = "\ufeff"
+
+
+class SplitError(Exception):
+    pass
 
 
 def read_rows(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with csv_path.open(encoding="utf-8", newline="") as csv_file:
+        if csv_file.read(1) == BOM:
+            raise SplitError(f"{csv_path} có BOM, chạy scripts/validate_dataset.py trước")
+        csv_file.seek(0)
         reader = csv.DictReader(csv_file)
         return list(reader.fieldnames or []), list(reader)
 
@@ -62,20 +70,38 @@ def split_train_val(
     return train_rows, val_rows
 
 
-def split_dataset(dataset_path: Path, output_dir: Path) -> dict[str, list[dict[str, str]]]:
-    fieldnames, rows = read_rows(dataset_path)
-    rows.sort(key=lambda row: row["id"])
-    rng = random.Random(SEED)
+def verify_existing_test(test_rows: list[dict[str, str]], rows: list[dict[str, str]]) -> None:
+    rows_by_id = {row["id"]: row for row in rows}
+    for test_row in test_rows:
+        dataset_row = rows_by_id.get(test_row["id"])
+        if dataset_row is None:
+            raise SplitError(f"Mẫu test '{test_row['id']}' không còn trong dataset")
+        if dataset_row != test_row:
+            raise SplitError(f"Mẫu test '{test_row['id']}' khác với dataset, không tự sửa tập test")
+        if test_row["source"] == SYNTHETIC_SOURCE:
+            raise SplitError(f"Mẫu test '{test_row['id']}' là synthetic")
+
+
+def find_empty_test_labels(rows: list[dict[str, str]], test_rows: list[dict[str, str]]) -> list[str]:
+    test_labels = {row["label"] for row in test_rows}
+    return sorted({row["label"] for row in rows} - test_labels)
+
+
+def split_dataset(
+    fieldnames: list[str], rows: list[dict[str, str]], output_dir: Path
+) -> dict[str, list[dict[str, str]]]:
+    rows = sorted(rows, key=lambda row: row["id"])
     test_path = output_dir / "test.csv"
 
     if test_path.exists():
         _, test_rows = read_rows(test_path)
+        verify_existing_test(test_rows, rows)
     else:
-        test_rows = split_new_test(rows, rng)
+        test_rows = split_new_test(rows, random.Random(f"{SEED}-test"))
 
     test_ids = {row["id"] for row in test_rows}
     remaining_rows = [row for row in rows if row["id"] not in test_ids]
-    train_rows, val_rows = split_train_val(remaining_rows, rng)
+    train_rows, val_rows = split_train_val(remaining_rows, random.Random(f"{SEED}-train-val"))
     splits = {"train": train_rows, "val": val_rows, "test": test_rows}
 
     for split_name in SPLIT_NAMES:
@@ -93,14 +119,22 @@ def main() -> int:
 
     dataset_path = Path(sys.argv[1])
     output_dir = Path(sys.argv[2])
-    _, rows = read_rows(dataset_path)
-    if not rows:
-        print("Dataset rỗng, không chia được.")
+    try:
+        fieldnames, rows = read_rows(dataset_path)
+        if not rows:
+            raise SplitError("Dataset rỗng, không chia được.")
+        splits = split_dataset(fieldnames, rows, output_dir)
+    except SplitError as error:
+        print(f"Lỗi: {error}")
         return 1
 
-    splits = split_dataset(dataset_path, output_dir)
     for split_name in SPLIT_NAMES:
         print(f"{split_name}: {len(splits[split_name])} mẫu")
+
+    empty_test_labels = find_empty_test_labels(rows, splits["test"])
+    if empty_test_labels:
+        print(f"Cảnh báo: tập test không có mẫu nhãn {', '.join(empty_test_labels)}")
+        return 1
     return 0
 
 
