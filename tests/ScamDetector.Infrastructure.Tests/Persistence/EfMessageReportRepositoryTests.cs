@@ -56,5 +56,23 @@ public sealed class EfMessageReportRepositoryTests : IDisposable
         await Assert.ThrowsAsync<ReportsUnavailableException>(() => repository.AddAsync(report, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task AddAsync_DatabaseRejectsWrite_ThrowsReportsUnavailableException()
+    {
+        var id = Guid.CreateVersion7(CreatedAt);
+        await using (var dbContext = _fixture.CreateDbContext())
+        {
+            await new EfMessageReportRepository(dbContext).AddAsync(
+                new MessageReport(id, "mot", MessageLabel.Spam, ReportChannel.Api, CreatedAt),
+                CancellationToken.None);
+        }
+
+        await using var secondContext = _fixture.CreateDbContext();
+        var duplicate = new MessageReport(id, "hai", MessageLabel.Scam, ReportChannel.Api, CreatedAt);
+
+        await Assert.ThrowsAsync<ReportsUnavailableException>(
+            () => new EfMessageReportRepository(secondContext).AddAsync(duplicate, CancellationToken.None));
+    }
+
     public void Dispose() => _fixture.Dispose();
 }

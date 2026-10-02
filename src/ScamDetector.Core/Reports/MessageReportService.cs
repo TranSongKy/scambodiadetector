@@ -20,10 +20,14 @@ public sealed class MessageReportService(IMessageReportRepository repository, Ti
         if (normalizedText.Length > ClassificationLimits.MaxMessageLength)
             return Result.Failure<Guid>(ClassificationErrors.TextTooLong);
 
+        var maskedText = ModelInputMasker.Mask(normalizedText);
+        if (maskedText.Length > ClassificationLimits.MaxMessageLength)
+            return Result.Failure<Guid>(ClassificationErrors.TextTooLong);
+
         var createdAt = timeProvider.GetUtcNow();
         var report = new MessageReport(
             Guid.CreateVersion7(createdAt),
-            ModelInputMasker.Mask(normalizedText),
+            maskedText,
             reportedLabel,
             channel,
             createdAt);

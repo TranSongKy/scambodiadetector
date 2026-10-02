@@ -96,4 +96,13 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Không có database:** Thiếu connection string thì đăng ký `UnavailableMessageReportRepository`, endpoint trả 503; phân loại vẫn hoạt động.
 - **Gói:** `Microsoft.EntityFrameworkCore.SqlServer` (provider), `Microsoft.EntityFrameworkCore.Design` (`PrivateAssets=all`, chỉ cho `dotnet ef`), `Microsoft.EntityFrameworkCore.Sqlite` (chỉ trong Infrastructure.Tests, test repository không cần SQL Server). `dotnet-ef` là tool cục bộ (`dotnet-tools.json`).
 - **Kiểm tra:** `MigrationTests` so model với snapshot; CI chạy `dotnet ef database update` trên container SQL Server thật.
-- **Dữ liệu báo cáo** không tự vào `dataset.csv`: cần người gán nhãn xem lại rồi xuất qua quy trình ở `docs/data-schema.md`.
+- **Độ dài sau khi che:** Placeholder có thể dài hơn chuỗi gốc (`a@b.vn` thành `<EMAIL>`), nên service kiểm tra lại độ dài sau khi che để không vượt cột `nvarchar(2000)`.
+- **Lỗi database:** `EfMessageReportRepository` đổi `DbUpdateException`/`DbException` thành `ReportsUnavailableException`, nên Api trả 503 và bot vẫn trả lời callback thay vì để nút quay mãi.
+- **Dữ liệu chưa đáng tin:** Endpoint không xác thực; `channel` do client tự khai và ai cũng có thể gửi nhãn sai (rate limit chỉ giảm nhẹ). `MessageReports` **không bao giờ** được đưa thẳng vào `dataset.csv`: người gán nhãn phải duyệt từng mẫu rồi đi qua quy trình ở `docs/data-schema.md`, gắn `source = contributed`.
+- **Che PII có giới hạn:** Chỉ che email, URL, OTP, CCCD/CMND, số điện thoại, số tài khoản/thẻ; tên người và địa chỉ có thể còn, nên người duyệt vẫn phải kiểm tra tay.
+- **Cấu hình compose là cho dev:** dùng tài khoản `sa` và `TrustServerCertificate=True`. Production cần user SQL riêng chỉ có quyền trên database `ScamDetector`, chứng chỉ TLS hợp lệ và mật khẩu từ secret store (không chứa `;` hay `=` nếu ghép vào connection string).
+
+## 015. Giới hạn request theo IP
+
+- **Lựa chọn:** `RateLimiter` có sẵn của ASP.NET, cửa sổ cố định theo IP cho endpoint phân loại và báo cáo (mặc định 30 request/60 giây, hằng `RateLimitOptions.Default*`); `/health` không giới hạn.
+- **Sau reverse proxy:** `RateLimiting:TrustForwardedHeaders=true` bật `X-Forwarded-For` và tin mọi proxy (xóa `KnownProxies`/`KnownIPNetworks`). Chỉ bật khi API **không** nhận kết nối trực tiếp từ internet, nếu không client tự đặt header để lách giới hạn. Mặc định tắt.

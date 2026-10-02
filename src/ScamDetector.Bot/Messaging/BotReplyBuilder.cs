@@ -29,7 +29,6 @@ public sealed class BotReplyBuilder(IMessageClassifier classifier)
         }
     }
 
-
     private static bool IsCommand(string content, string command)
     {
         var firstWord = content.Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;

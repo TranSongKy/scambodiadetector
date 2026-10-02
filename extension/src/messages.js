@@ -35,7 +35,7 @@ export const UI_TEXT = Object.freeze({
   saved: "Đã lưu.",
   permissionDenied: "Cần cấp quyền truy cập địa chỉ này để kiểm tra tin nhắn.",
   reportPrompt: "Kết quả chưa đúng? Cho mình biết tin này thực sự là:",
-  reportThanks: "Cảm ơn bạn! Phản hồi đã được ghi nhận (nội dung đã được ẩn thông tin cá nhân).",
+  reportThanks: "Cảm ơn bạn! Phản hồi đã được ghi nhận (số điện thoại, tài khoản, OTP, link đã được ẩn).",
 });
 
 export const REPORT_LABEL_TEXT = Object.freeze({

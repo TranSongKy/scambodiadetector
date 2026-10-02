@@ -22,7 +22,7 @@ public static class BotReplies
     public const string ReportScamButton = "Báo: Lừa đảo";
     public const string ReportSpamButton = "Báo: Quảng cáo";
     public const string ReportNormalButton = "Báo: Bình thường";
-    public const string ReportThanks = "Cảm ơn bạn! Phản hồi đã được ghi nhận (đã ẩn thông tin cá nhân).";
+    public const string ReportThanks = "Cảm ơn bạn! Phản hồi đã được ghi nhận (số điện thoại, tài khoản, OTP, link đã được ẩn).";
     public const string ReportOriginalMissing = "Không tìm thấy tin nhắn gốc để ghi nhận.";
     public const string ReportsUnavailable = "Hệ thống chưa bật lưu phản hồi, bạn thử lại sau nhé.";
     public const string ReportInvalid = "Không ghi nhận được phản hồi này.";

@@ -184,7 +184,7 @@ docker build --build-arg PROJECT=ScamDetector.Bot -t scam-detector-bot .
 docker run -e Telegram__BotToken=<token> -v "$PWD/models:/models:ro" scam-detector-bot
 
 # hoặc bằng compose: SQL Server + api (+ bot)
-cp .env.example .env                    # sửa MSSQL_SA_PASSWORD, TELEGRAM_BOT_TOKEN
+cp .env.example .env                    # điền MSSQL_SA_PASSWORD (mật khẩu mạnh), TELEGRAM_BOT_TOKEN
 docker compose up --build               # sqlserver + api, tự chạy migration
 docker compose --profile bot up --build # thêm bot
 ```
@@ -196,6 +196,8 @@ docker compose --profile bot up --build # thêm bot
 - Giới hạn request theo IP: `RateLimiting__PermitLimit` (mặc định 30) mỗi `RateLimiting__WindowSeconds` (60) cho `/api/v1/classifications` và `/api/v1/reports`, vượt thì trả 429. Khi chạy sau reverse proxy tin cậy (nginx, load balancer), đặt `RateLimiting__TrustForwardedHeaders=true` để lấy IP thật từ `X-Forwarded-For`; không bật khi API lộ trực tiếp ra internet.
 - Container chạy bằng UID 1654 (`app`); file trong `models/` phải đọc được bởi user này (`chmod a+r models/*`).
 - Không commit `.env`; token và mật khẩu chỉ nằm trong biến môi trường hoặc secret store của nền tảng deploy.
+- Compose dùng tài khoản `sa` cho tiện dev. Production: tạo user SQL riêng, ít quyền, bật TLS thật (xem quyết định 014).
+- Báo cáo người dùng chưa được xác thực: duyệt tay trước khi đưa vào dataset (quyết định 014).
 
 ## Hợp đồng giữa notebook huấn luyện và backend
 

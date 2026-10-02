@@ -5,9 +5,12 @@ public sealed record RateLimitOptions
     public const string SectionName = "RateLimiting";
     public const string PolicyName = "per-client";
 
-    public int PermitLimit { get; init; } = 30;
+    public const int DefaultPermitLimit = 30;
+    public const int DefaultWindowSeconds = 60;
 
-    public int WindowSeconds { get; init; } = 60;
+    public int PermitLimit { get; init; } = DefaultPermitLimit;
+
+    public int WindowSeconds { get; init; } = DefaultWindowSeconds;
 
     public bool TrustForwardedHeaders { get; init; }
 }
