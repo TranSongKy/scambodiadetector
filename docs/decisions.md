@@ -66,3 +66,10 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Lý do:** Nhất quán giữa train và suy luận quan trọng hơn vài điểm F1; tin nhắn lừa đảo thường viết không dấu, sai chính tả nên lợi ích tách từ thấp hơn văn bản chuẩn.
 - **Đánh đổi:** Có thể kém hơn PhoBERT có tách từ. Nếu thí nghiệm cho thấy chênh lệch lớn (ghi trong `docs/experiments.md`), cần thêm `IWordSegmenter` ở Infrastructure và cập nhật notebook cùng lúc.
 - **Placeholder:** `<URL>`, `<PHONE>`... không đăng ký làm special token; BPE tách chúng thành subword giống nhau ở cả hai phía.
+
+## 011. Huấn luyện bằng script, notebook chỉ là vỏ Colab
+
+- **Lựa chọn:** `scripts/train_phobert.py` chứa toàn bộ logic (đọc split, fine-tune `vinai/phobert-base-v2`, đánh giá macro F1/F1 scam trên test, export ONNX opset 17, so logits PyTorch–ONNX, sinh `tokenizer-golden.json`). `notebooks/train_phobert_colab.ipynb` chỉ clone repo, cài thư viện và gọi script.
+- **Gói (chỉ cho huấn luyện, `requirements-train.txt`):** `torch`, `transformers`, `datasets`, `accelerate` để fine-tune; `onnx`, `onnxruntime` để export và kiểm tra ONNX; `numpy`. Không dùng `scikit-learn`: F1 tự tính (có unit test) để bớt một phụ thuộc. Backend không cần các gói này.
+- **Kiểm tra tokenizer:** `scripts/VerifyTokenizer.cs` chạy tokenizer .NET trên `tokenizer-golden.json` do HuggingFace sinh ra; phải khớp 100% trước khi deploy model.
+- **Tokenizer chậm (`use_fast=False`):** dùng `PhobertTokenizer` gốc để có đúng `vocab.txt` và `bpe.codes` mà backend đọc.

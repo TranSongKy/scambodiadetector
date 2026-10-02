@@ -47,6 +47,18 @@ python scripts/split_dataset.py data/processed/dataset.csv data/processed/splits
 
 `anonymize.py` không in nội dung tin nhắn, chỉ in id và số lượng. Tập test trong `splits/test.csv` cố định sau lần chia đầu.
 
+## Huấn luyện model
+
+Mở `notebooks/train_phobert_colab.ipynb` trên Google Colab (GPU), hoặc chạy trực tiếp trên máy có GPU:
+
+```bash
+pip install -r requirements-train.txt
+python scripts/train_phobert.py data/processed/splits models/
+dotnet run scripts/VerifyTokenizer.cs -- models   # tokenizer .NET phải khớp HuggingFace
+```
+
+Script in macro F1, F1 scam trên tập test và dòng để ghi vào `docs/experiments.md`; trả lỗi nếu logits ONNX lệch PyTorch quá `1e-3`.
+
 ## Chạy API ở máy
 
 API cần 3 file model trong `models/` (đường dẫn cấu hình ở `src/ScamDetector.Api/appsettings.json`, mục `OnnxModel`):
