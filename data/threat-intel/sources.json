@@ -1,39 +1,38 @@
 [
   {
-    "name": "khonggianmang-canh-bao",
-    "kind": "html_list",
-    "category": "co-quan-chuc-nang",
-    "url": "https://khonggianmang.vn/bai-viet/canh-bao-an-toan-thong-tin",
-    "link_pattern": "khonggianmang\\.vn/bai-viet/[^?#]+",
-    "max_items": 10
-  },
-  {
     "name": "tinnhiemmang-website-lua-dao",
+    "kind": "domain_page",
+    "category": "co-quan-chuc-nang",
+    "url": "https://tinnhiemmang.vn/website-lua-dao"
+  },
+  {
+    "name": "tinnhiemmang-canh-bao-lua-dao",
     "kind": "html_list",
     "category": "co-quan-chuc-nang",
-    "url": "https://tinnhiemmang.vn/danh-sach-website-lua-dao",
-    "link_pattern": "tinnhiemmang\\.vn/(?:canh-bao|tin-tuc)/[^?#]+",
+    "url": "https://tinnhiemmang.vn/canh-bao-lua-dao",
+    "link_pattern": "^https://tinnhiemmang\\.vn/(?!canh-bao-lua-dao|website-lua-dao)[a-z0-9-]{25,}$",
     "max_items": 10
   },
   {
-    "name": "bocongan-tin-tuc",
-    "kind": "rss",
+    "name": "bocongan-canh-bao",
+    "kind": "html_list",
     "category": "co-quan-chuc-nang",
-    "url": "https://bocongan.gov.vn/rss/tin-tuc-su-kien.rss",
+    "url": "https://bocongan.gov.vn/",
+    "link_pattern": "^https://bocongan\\.gov\\.vn/bai-viet/[a-z0-9-]*(?:lua-dao|gia-danh|mao-danh|gia-mao)[a-z0-9-]*$",
     "max_items": 10
   },
   {
-    "name": "vnexpress-phap-luat",
+    "name": "thanhnien-phap-luat",
     "kind": "rss",
     "category": "bao-chi",
-    "url": "https://vnexpress.net/rss/phap-luat.rss",
+    "url": "https://thanhnien.vn/rss/thoi-su/phap-luat.rss",
     "max_items": 15
   },
   {
-    "name": "vnexpress-so-hoa",
+    "name": "vietnamnet-phap-luat",
     "kind": "rss",
     "category": "bao-chi",
-    "url": "https://vnexpress.net/rss/so-hoa.rss",
+    "url": "https://vietnamnet.vn/rss/phap-luat.rss",
     "max_items": 15
   },
   {

@@ -1,3 +1,4 @@
+import html
 import re
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
@@ -64,6 +65,34 @@ class _LinkParser(HTMLParser):
             self.links.append(href)
 
 
+class _VisibleTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.chunks: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in SKIPPED_TAGS:
+            self._skip_depth += 1
+        self.chunks.append(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in SKIPPED_TAGS and self._skip_depth:
+            self._skip_depth -= 1
+        self.chunks.append(" ")
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip_depth:
+            self.chunks.append(data)
+
+
+def extract_visible_text(html: str) -> str:
+    parser = _VisibleTextParser()
+    parser.feed(html)
+    parser.close()
+    return WHITESPACE.sub(" ", "".join(parser.chunks)).strip()
+
+
 def extract_paragraphs(html: str) -> list[str]:
     parser = _ArticleParser()
     parser.feed(html)
@@ -87,16 +116,21 @@ def _child_text(element: ElementTree.Element, *names: str) -> str:
     return ""
 
 
+def _clean_feed_text(text: str) -> str:
+    without_tags = re.sub(r"<[^>]+>", " ", html.unescape(text))
+    return WHITESPACE.sub(" ", html.unescape(without_tags)).strip()
+
+
 def parse_feed(xml_text: str) -> list[FeedItem]:
     root = ElementTree.fromstring(xml_text)
     atom = "{http://www.w3.org/2005/Atom}"
     entries = root.findall(".//item") or root.findall(f".//{atom}entry")
     return [
         FeedItem(
-            title=_child_text(entry, "title", f"{atom}title"),
+            title=_clean_feed_text(_child_text(entry, "title", f"{atom}title")),
             link=_child_text(entry, "link", f"{atom}link"),
             published=_child_text(entry, "pubDate", f"{atom}published", f"{atom}updated"),
-            summary=re.sub(r"<[^>]+>", " ", _child_text(entry, "description", f"{atom}summary")),
+            summary=_clean_feed_text(_child_text(entry, "description", f"{atom}summary")),
         )
         for entry in entries
     ]

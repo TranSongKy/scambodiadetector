@@ -43,6 +43,8 @@ class DomainTests(unittest.TestCase):
         self.assertEqual("xn--vitcombank-n7a.com", normalize_domain("viêtcombank.com"))
         self.assertIsNone(normalize_domain("anh.jpg"))
         self.assertIsNone(normalize_domain("localhost"))
+        self.assertIsNone(normalize_domain("TP.HCM"))
+        self.assertIsNone(normalize_domain("bao-cao.docx"))
 
     def test_extract_domains_finds_defanged_and_plain(self) -> None:
         self.assertEqual(
@@ -53,6 +55,11 @@ class DomainTests(unittest.TestCase):
         warned = extract_warned_domains(["Trang giả mạo vcb-xacminh.com", "Thời tiết hôm nay tại weather.example.com"])
 
         self.assertEqual(["vcb-xacminh.com"], list(warned))
+
+    def test_city_abbreviations_are_not_domains(self) -> None:
+        warned = extract_warned_domains(["Công an TP.HCM phát hiện kho hàng giả mạo nhãn hiệu tại Q.1"])
+
+        self.assertEqual({}, warned)
 
     def test_allowlist_matches_parent_domains(self) -> None:
         allowlist = {"vietcombank.com.vn", "gov.vn"}
@@ -69,6 +76,18 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(2, len(items))
         self.assertEqual(ARTICLE_URL, items[0].link)
         self.assertIn("giả mạo", items[0].summary)
+
+    def test_feed_text_is_unescaped_and_stripped_of_tags(self) -> None:
+        feed = (
+            "<rss><channel><item><title>Kh&amp;ocirc;ng chuyển tiền &amp;amp;apos;lạ&amp;amp;apos;</title>"
+            "<link>https://a.vn/1</link><description>&lt;p&gt;Cảnh b&amp;aacute;o &lt;b&gt;lừa đảo&lt;/b&gt;&lt;/p&gt;"
+            "</description></item></channel></rss>"
+        )
+
+        item = parse_feed(feed)[0]
+
+        self.assertEqual("Không chuyển tiền 'lạ'", item.title)
+        self.assertEqual("Cảnh báo lừa đảo", item.summary)
 
     def test_parse_atom_entries(self) -> None:
         atom = (
@@ -141,6 +160,25 @@ class TemplateTests(unittest.TestCase):
 
         self.assertEqual(["x.blogspot.com"], [record.domain for record in update.new_domains])
 
+    def test_reporter_language_is_not_a_candidate(self) -> None:
+        self.assertFalse(
+            is_template_candidate(
+                "Để đấu tranh, ngăn chặn đối với loại tội phạm này, cơ quan điều tra tiếp tục xác minh, làm rõ "
+                "tất cả các hành vi vi phạm pháp luật trước đó của các đối tượng để xử lý triệt để"
+            )
+        )
+        self.assertFalse(
+            is_template_candidate("Với thủ đoạn này, nạn nhân được yêu cầu truy cập <URL> và chuyển tiền vào tài khoản")
+        )
+
+    def test_police_impersonation_scam_is_still_a_candidate(self) -> None:
+        self.assertTrue(
+            is_template_candidate(
+                "Cơ quan điều tra thông báo bạn liên quan vụ án rửa tiền, chuyển toàn bộ tiền vào tài khoản "
+                "<ACCOUNT> để xác minh"
+            )
+        )
+
     def test_victim_narration_without_call_to_action_is_not_a_candidate(self) -> None:
         self.assertFalse(is_template_candidate("Tôi rất bất ngờ khi tài khoản mất hết tiền chỉ sau vài phút"))
 
@@ -191,6 +229,16 @@ class CrawlTests(unittest.TestCase):
         result = crawl_source(source, fake_fetch(self.pages), self.data_dir)
 
         self.assertEqual(1, result.articles)
+
+    def test_domain_page_source_reads_domains_from_table_cells(self) -> None:
+        url = "https://tinnhiemmang.vn/website-lua-dao"
+        self.pages[url] = fixture("domain_table.html")
+
+        result = crawl_source(Source(name="tnm", kind="domain_page", url=url), fake_fetch(self.pages), self.data_dir)
+
+        self.assertEqual({"vcb-xacminh.com", "bidv-hotro.top"}, set(result.domains))
+        self.assertIn("tinnhiemmang.vn", result.domains["vcb-xacminh.com"].evidence)
+        self.assertEqual(url, result.domains["vcb-xacminh.com"].source_url)
 
     def test_domain_list_source_reads_json_entries(self) -> None:
         source = Source(name="blacklist", kind="domain_list", url=BLACKLIST_URL)
