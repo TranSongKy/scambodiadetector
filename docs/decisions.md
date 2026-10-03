@@ -149,3 +149,18 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Ràng buộc của agent:** không truy cập mạng và không mở link trong dữ liệu (tránh bị trang lừa đảo tác động hoặc prompt injection), chỉ được loại qua `reject_threat_intel.py` (không thêm, không sửa), chỉ duyệt dòng mới so với `origin/main`, không đọc `data/raw/`, không commit/push/merge. Trường hợp không chắc thì xếp CẦN NGƯỜI XEM, không đoán. Báo cáo cảnh báo nguồn có hơn 30% mục bị loại.
 - **Đã thử:** Bộ 7 tên miền và 5 văn mẫu gồm cả bẫy (gốc `blogspot.com`, trang bán lẻ thật, lời khuyên của công an, lời kể nạn nhân, thông báo OTP hợp lệ): agent xử lý đúng cả 12 mục.
 - **Mục bị loại lưu dấu vân tay:** `rejected_templates.csv` chỉ lưu SHA-256 (12 ký tự hex) của từng cụm 3 từ, không lưu nội dung, vì đoạn bị loại có thể chứa tên thật hay chi tiết riêng tư; vẫn đủ để nhận ra văn mẫu gần giống khi crawl lại.
+
+## 021. Thu thập dữ liệu huấn luyện bán tự động: máy gợi ý, người duyệt
+
+- **Bối cảnh:** Chưa có tin nhắn thật để train. Người dùng muốn agent tự crawl và gán nhãn từ website, diễn đàn, mạng xã hội, bộ dữ liệu công khai, kèm dữ liệu tự sinh và tự đóng góp.
+- **Lựa chọn:** Agent gán nhãn **gợi ý**, người duyệt từng mẫu (`review_candidates.py`, `annotator` là người duyệt). Lý do: nhãn sai trong tập test làm mọi chỉ số vô nghĩa; quy tắc 3 của CLAUDE.md không cho đưa dữ liệu chưa kiểm chứng vào train.
+- **Luồng:** `collect_training_candidates.py` → `candidates.csv` (đã che PII) → agent `training-data-labeler` ghi gợi ý qua `label_candidates.py` (kiểm tra enum, bắt buộc lý do) → người duyệt → `dataset.csv`. Không bước tự động nào ghi vào `dataset.csv`.
+- **Tôn trọng điều khoản và tín hiệu của trang:**
+  - **X và Reddit không crawl:** điều khoản X cấm scraping và cấm dùng nội dung để train model; điều khoản Data API của Reddit cấm dùng nội dung train ML khi chưa được phép. Tin từ đây chỉ vào qua nhập tay khi người dùng là người nhận hoặc được đồng ý.
+  - **robots.txt quyết định:** trang khai báo `Content-Signal: ai-train=no` (voz.vn) hoặc chặn hoàn toàn bot huấn luyện AI (tinhte.vn chặn ClaudeBot, Bytespider) bị bỏ qua tự động (`training_data/policy.py`). Kiểm tra ngày 03/10/2026: báo Tuổi Trẻ, Dân trí, Thanh Niên, VietNamNet, Bộ Công an, tinnhiemmang.vn, otofun, webtretho không hạn chế.
+  - **Bộ dữ liệu công khai** phải ghi giấy phép trong `sources.json` (loader từ chối nếu thiếu). Chưa bật bộ nào: bộ SMS spam tiếng Việt của Viettel/Vinaphone (arXiv 1705.04003) chỉ cho mục đích nghiên cứu, cần người dùng tự xác nhận điều khoản; PhishVN là tên miền, hợp với danh sách chặn hơn là train.
+- **Riêng tư:** che PII ngay khi lấy bằng cùng `masking.py`; tin có thể chứa tên người (`may_contain_name`) bị bỏ ngay, không lưu; `reviewed.csv` chỉ lưu SHA-256 rút gọn của tin đã duyệt để chống thu thập lại.
+- **Nội dung thù địch:** agent bắt buộc `exclude`; người duyệt là lớp cuối.
+- **Synthetic:** agent `synthetic-message-writer` chỉ chạy khi người dùng yêu cầu rõ, gắn `source = synthetic`, vẫn qua người duyệt; trần 20% và cấm vào tập test giữ nguyên (`validate_dataset.py`, `split_dataset.py`).
+- **CI khi đang gom dữ liệu:** `validate_dataset.py --collecting` vẫn chặn lỗi từng dòng (PII, enum, trùng) nhưng chỉ cảnh báo phân bố nhãn; kiểm tra đầy đủ chạy trước khi train (notebook).
+- **Đánh đổi:** Tin trích trong báo chủ yếu là `scam`; `normal` và `spam` phụ thuộc diễn đàn, nhập tay và synthetic nên sẽ thiếu trong thời gian đầu. Parser diễn đàn dựa vào lớp HTML (`bbWrapper` của XenForo), đổi giao diện thì cần sửa `content_class`.

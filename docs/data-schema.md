@@ -3,6 +3,9 @@
 ## 1. Luồng dữ liệu
 
 ```
+data/training-candidates/  Ứng viên do crawler thu thập (đã che PII), agent gợi ý nhãn,
+   │  scripts/review_candidates.py → người duyệt → thẳng vào dataset.csv (quyết định 021)
+   ▼
 MessageReports (DB)  Báo cáo người dùng, đã che PII khi lưu.
    │  scripts/export_reports.py → duyệt tay → vào data/raw/
    ▼
@@ -85,7 +88,7 @@ Không thay tên ngân hàng, thương hiệu bị giả danh: đó là tín hi�
 3. `synthetic` không vượt quá 20% dataset và **không xuất hiện trong tập test**.
 4. Chia tập theo tỉ lệ 70/15/15, phân tầng theo `label`, `SEED = 42`.
 5. Tập test cố định sau khi tạo; chỉ thêm mẫu mới vào train/val.
-6. Chạy `scripts/validate_dataset.py` trước mỗi commit dữ liệu.
+6. Chạy `scripts/validate_dataset.py` trước mỗi commit dữ liệu (thêm `--collecting` khi đang gom dữ liệu: chỉ cảnh báo phân bố nhãn). Trước khi train phải đạt bản đầy đủ.
 
 ## 7. Giới hạn ở tầng API
 
@@ -110,3 +113,15 @@ Không phải dữ liệu train. Dùng trực tiếp ở API (quyết định 01
 | `sources.json` | `name,kind,category,url,...` | `kind`: `rss`, `html_list`, `domain_list`, `domain_page` (trang liệt kê tên miền lừa đảo), `manual`; URL phải `https` |
 
 Kiểm tra bằng `python scripts/validate_threat_intel.py`.
+
+## 9. Ứng viên dữ liệu huấn luyện (`data/training-candidates/`)
+
+| File | Cột | Ghi chú |
+|---|---|---|
+| `candidates.csv` | `id,text,origin,source,source_url,collected_at,hint_label,hint_channel,suggested_label,suggested_scam_type,suggested_channel,confidence,note` | `id` dạng `cand_000001`; `text` đã che PII; `origin`: `news`, `forum`, `public_dataset`, `manual`, `synthetic`; `suggested_label` thêm giá trị `exclude` |
+| `reviewed.csv` | `key,decision,decided_at` | `key` = 16 ký tự đầu SHA-256 của text chuẩn hóa; không lưu nội dung |
+| `manual_messages.csv` | `text,label,channel,source_url,note` | Tin nhập tay, `label` có thể để trống |
+| `sources.json` | `name,kind,url,origin,...` | `kind`: `rss`, `html_list`, `csv_dataset` (bắt buộc `license`), `manual` |
+
+Kiểm tra bằng `python scripts/validate_training_candidates.py`.
+

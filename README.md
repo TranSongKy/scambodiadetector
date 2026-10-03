@@ -60,6 +60,41 @@ Báo cáo người dùng từ API/bot/extension: `scripts/export_reports.py` (xe
 
 `anonymize.py` không in nội dung tin nhắn, chỉ in id và số lượng. Tập test trong `splits/test.csv` cố định sau lần chia đầu.
 
+## Thu thập dữ liệu huấn luyện tự động
+
+Chưa có tin nhắn thật thì dùng quy trình bán tự động (quyết định 021). Máy thu thập và gợi ý nhãn, **người duyệt từng mẫu** trước khi vào `dataset.csv`.
+
+```
+crawler (hằng tuần, GitHub Actions) ──► data/training-candidates/candidates.csv   (đã che PII, chưa có nhãn)
+agent training-data-labeler        ──► gợi ý nhãn + lý do vào candidates.csv
+agent synthetic-message-writer     ──► (khi bạn yêu cầu) tin normal/spam tự sinh, source=synthetic
+python scripts/review_candidates.py ──► bạn duyệt → dataset.csv (annotator = bạn)
+```
+
+Nguồn và luật:
+
+| Nguồn | Lấy gì | Ghi chú |
+|---|---|---|
+| Báo chí, Bộ Công an, tinnhiemmang.vn | Tin nhắn lừa đảo được trích nguyên văn trong bài (trong dấu ngoặc kép) | Thường là `scam` |
+| Diễn đàn otofun | Bài viết trong chủ đề có từ khóa lừa đảo, tin nhắn, quảng cáo | Agent loại bài thảo luận và nội dung thù địch |
+| Bộ dữ liệu công khai | Khai báo trong `sources.json` loại `csv_dataset`, **bắt buộc ghi giấy phép** | Chưa bật bộ nào, xem quyết định 021 |
+| Nhập tay | `data/training-candidates/manual_messages.csv` (`text,label,channel,source_url,note`) | Tin bạn hoặc người quen nhận được; tin từ X/Reddit/Facebook chỉ vào bằng cách này |
+| Tự sinh | Agent `synthetic-message-writer`, chỉ khi bạn yêu cầu | ≤ 20% dataset, không vào tập test |
+
+- Trước khi lấy dữ liệu từ một trang, crawler đọc `robots.txt`; trang khai báo `Content-Signal: ai-train=no` hoặc chặn bot huấn luyện AI (GPTBot, ClaudeBot, CCBot…) bị bỏ qua. Vì vậy voz.vn và tinhte.vn không được dùng.
+- Mọi tin được che PII ngay khi lấy (`<PHONE>`, `<URL>`…); tin có thể chứa tên người bị bỏ luôn, không lưu.
+- `reviewed.csv` chỉ lưu mã băm của tin đã duyệt để không thu thập lại.
+
+```bash
+python scripts/collect_training_candidates.py --dry-run          # chạy thử (cần mạng tới các trang Việt Nam)
+# trong Claude Code: "dùng agent training-data-labeler gán nhãn ứng viên"
+# (tuỳ chọn) "dùng agent synthetic-message-writer sinh 100 tin normal và 100 tin spam"
+python scripts/review_candidates.py --annotator ky                # Enter = đồng ý, s/p/n = đổi nhãn, x = loại, q = lưu và thoát
+python scripts/validate_dataset.py data/processed/dataset.csv     # kiểm tra đủ, kể cả cân bằng nhãn, trước khi train
+```
+
+Workflow `training-data.yml` chạy mỗi thứ Hai (7:41 giờ Việt Nam): thu thập tối đa 300 ứng viên rồi mở PR `training-data/candidates`. Merge PR đó chỉ thêm ứng viên vào hàng chờ, chưa thêm gì vào dataset. Khi đang gom dữ liệu, CI chạy `validate_dataset.py --collecting`: lỗi từng dòng vẫn làm CI đỏ, còn phân bố nhãn chưa cân bằng chỉ là cảnh báo.
+
 ## Huấn luyện model
 
 Mở `notebooks/train_phobert_colab.ipynb` trên Google Colab (GPU), hoặc chạy trực tiếp trên máy có GPU:

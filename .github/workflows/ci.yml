@@ -84,10 +84,12 @@ jobs:
       - run: python -m unittest discover -s scripts/tests -t .
       - name: Validate threat intel
         run: python scripts/validate_threat_intel.py
+      - name: Validate training candidates
+        run: python scripts/validate_training_candidates.py
       - name: Validate dataset
         run: |
           if [ "$(wc -l < data/processed/dataset.csv)" -gt 1 ]; then
-            python scripts/validate_dataset.py data/processed/dataset.csv
+            python scripts/validate_dataset.py --collecting data/processed/dataset.csv
           else
             echo "dataset.csv chưa có mẫu, bỏ qua bước validate."
           fi

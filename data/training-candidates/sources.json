@@ -1,0 +1,69 @@
+[
+  {
+    "name": "tinnhiemmang-canh-bao-lua-dao",
+    "kind": "html_list",
+    "origin": "news",
+    "url": "https://tinnhiemmang.vn/canh-bao-lua-dao",
+    "link_pattern": "^https://tinnhiemmang\\.vn/(?!canh-bao-lua-dao|website-lua-dao)[a-z0-9-]{25,}$",
+    "max_items": 10
+  },
+  {
+    "name": "bocongan-canh-bao",
+    "kind": "html_list",
+    "origin": "news",
+    "url": "https://bocongan.gov.vn/",
+    "link_pattern": "^https://bocongan\\.gov\\.vn/bai-viet/[a-z0-9-]*(?:lua-dao|gia-danh|mao-danh|gia-mao)[a-z0-9-]*$",
+    "max_items": 10
+  },
+  {
+    "name": "thanhnien-phap-luat",
+    "kind": "rss",
+    "origin": "news",
+    "url": "https://thanhnien.vn/rss/thoi-su/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "vietnamnet-phap-luat",
+    "kind": "rss",
+    "origin": "news",
+    "url": "https://vietnamnet.vn/rss/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "tuoitre-phap-luat",
+    "kind": "rss",
+    "origin": "news",
+    "url": "https://tuoitre.vn/rss/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "dantri-phap-luat",
+    "kind": "rss",
+    "origin": "news",
+    "url": "https://dantri.com.vn/rss/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "otofun-dien-dan",
+    "kind": "rss",
+    "origin": "forum",
+    "url": "https://www.otofun.net/forums/-/index.rss",
+    "content_class": "bbWrapper",
+    "max_items": 10,
+    "keywords": [
+      "lừa đảo",
+      "lừa",
+      "tin nhắn",
+      "cảnh giác",
+      "giả danh",
+      "mạo danh",
+      "sms",
+      "quảng cáo",
+      "spam"
+    ]
+  },
+  {
+    "name": "nhap-tay",
+    "kind": "manual"
+  }
+]

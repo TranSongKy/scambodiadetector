@@ -94,6 +94,15 @@ class ValidateDatasetTests(unittest.TestCase):
 
         self.assertTrue(any("synthetic" in error for error in validate_dataset(dataset)))
 
+    def test_collecting_mode_skips_distribution_but_keeps_row_checks(self) -> None:
+        rows = [{**row, "source": "synthetic"} for row in make_balanced_rows(per_label=5) if row["label"] == "scam"]
+        dataset = write_dataset(self.root / "dataset.csv", rows)
+        broken = write_dataset(self.root / "broken.csv", [{**rows[0], "label": "lua"}])
+
+        self.assertTrue(validate_dataset(dataset))
+        self.assertEqual([], validate_dataset(dataset, enforce_distribution=False))
+        self.assertTrue(validate_dataset(broken, enforce_distribution=False))
+
     def test_unknown_placeholder_is_reported(self) -> None:
         rows = make_balanced_rows(per_label=5)
         rows[1] = {**rows[1], "text": rows[1]["text"] + " <FOO>"}

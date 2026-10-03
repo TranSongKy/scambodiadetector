@@ -23,10 +23,11 @@ python3 -m unittest discover -s scripts/tests -t .
 
 step "Threat intel"
 python3 scripts/validate_threat_intel.py
+python3 scripts/validate_training_candidates.py
 
 step "Dataset"
 if [ "$(wc -l < data/processed/dataset.csv)" -gt 1 ]; then
-    python3 scripts/validate_dataset.py data/processed/dataset.csv
+    python3 scripts/validate_dataset.py --collecting data/processed/dataset.csv
 else
     echo "dataset.csv chưa có mẫu, bỏ qua."
 fi
