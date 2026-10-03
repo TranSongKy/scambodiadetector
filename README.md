@@ -212,6 +212,7 @@ Nguồn: cơ quan chức năng (khonggianmang.vn, tinnhiemmang.vn, Bộ Công an
 python scripts/crawl_threat_intel.py --dry-run --report report.md   # chạy thử, không ghi file
 python scripts/crawl_threat_intel.py --only vnexpress-phap-luat     # một nguồn
 python scripts/validate_threat_intel.py                              # luật cứng
+python scripts/probe_sources.py https://bao.vn/rss                   # kiểm tra URL trước khi thêm nguồn
 python scripts/reject_threat_intel.py --domain abc.xyz --reason "Trang chính thức, bị trích nhầm"
 python scripts/reject_threat_intel.py --template tpl_000012 --reason "Lời khuyên của công an, không phải tin lừa"
 ```
@@ -222,7 +223,7 @@ Loại mục sai bằng `reject_threat_intel.py`, đừng xóa tay: mục bị l
 
 Cấu hình (`appsettings.json`, biến môi trường `ThreatIntel__*`): `DataDirectory` (mặc định `../../data/threat-intel`, trong Docker là `/threat-intel`), `MinimumTemplateCoverage` (0.6), `ReloadCheckSeconds` (60).
 
-Thiết lập GitHub một lần: Settings → Actions → General → bật *Allow GitHub Actions to create and approve pull requests*. PR tạo bằng `GITHUB_TOKEN` không kích hoạt CI; muốn CI chạy trên PR cập nhật, tạo fine-grained token (quyền Contents và Pull requests: write) và lưu vào secret `THREAT_INTEL_TOKEN`. Với PR sửa crawler hoặc `sources.json`, workflow chạy thử toàn bộ nguồn và đưa báo cáo vào Job summary để kiểm tra URL và parser còn đúng.
+Thiết lập GitHub một lần: Settings → Actions → General → bật *Allow GitHub Actions to create and approve pull requests*. PR tạo bằng `GITHUB_TOKEN` không kích hoạt CI; muốn CI chạy trên PR cập nhật, tạo fine-grained token (quyền Contents và Pull requests: write) và lưu vào secret `THREAT_INTEL_TOKEN`. Với PR sửa crawler hoặc `sources.json`, workflow chạy thử toàn bộ nguồn và đưa báo cáo vào Job summary để kiểm tra URL và parser còn đúng. Chạy tay workflow (tab Actions → Threat intel → Run workflow) có ba chế độ: `update` (crawl và mở PR), `dry-run` (chỉ báo cáo), `probe` (kiểm tra danh sách URL ứng viên, liệt kê link feed và link bài viết; dùng khi thêm hoặc sửa nguồn vì nhiều trang Việt Nam chỉ truy cập được từ runner GitHub).
 
 ## Database
 
