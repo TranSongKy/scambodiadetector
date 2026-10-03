@@ -12,4 +12,12 @@ public sealed class UnavailableScamModelTests
         await Assert.ThrowsAsync<ScamModelUnavailableException>(
             () => model.PredictAsync("xin chào", CancellationToken.None));
     }
+
+    [Fact]
+    public void IsAvailable_Always_ReturnsFalse()
+    {
+        var model = new UnavailableScamModel(["model.onnx"]);
+
+        Assert.False(model.IsAvailable);
+    }
 }

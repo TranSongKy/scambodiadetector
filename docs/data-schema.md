@@ -94,3 +94,19 @@ Không thay tên ngân hàng, thương hiệu bị giả danh: đó là tín hi�
 | Độ dài tin nhắn đầu vào | 1–2000 ký tự |
 | Số token tối đa đưa vào PhoBERT | 256 |
 | Ngưỡng `confidence` để kết luận `scam` | 0.7 (cấu hình trong `appsettings.json`) |
+
+## 8. Dữ liệu threat-intel (`data/threat-intel/`)
+
+Không phải dữ liệu train. Dùng trực tiếp ở API (quyết định 019). Mọi file UTF-8, không BOM, `\n`.
+
+| File | Cột | Ghi chú |
+|---|---|---|
+| `blocked_domains.csv` | `domain,source,source_url,first_seen,evidence` | `domain` chữ thường, IDNA (punycode), không `www.`; `evidence` là đoạn trích ≤ 240 ký tự đã ẩn danh |
+| `scam_templates.csv` | `id,text,source,source_url,first_seen` | `id` dạng `tpl_000001`; `text` đã ẩn danh như mục 5, NFC |
+| `allowed_domains.csv` | `domain,note` | Tên miền hợp pháp, không bao giờ bị chặn (gồm subdomain) |
+| `rejected_domains.csv` | `domain,reason,rejected_at` | Ghi bởi `reject_threat_intel.py` |
+| `rejected_templates.csv` | `fingerprint,reason,rejected_at` | Dấu vân tay, không lưu nội dung |
+| `manual_submissions.csv` | `text,source_url,note` | Tin nhập tay từ mạng xã hội; crawler ẩn danh trước khi thành văn mẫu |
+| `sources.json` | `name,kind,category,url,...` | `kind`: `rss`, `html_list`, `domain_list`, `manual`; URL phải `https` |
+
+Kiểm tra bằng `python scripts/validate_threat_intel.py`.

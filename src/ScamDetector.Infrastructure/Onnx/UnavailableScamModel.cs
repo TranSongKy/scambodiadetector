@@ -6,6 +6,8 @@ public sealed class UnavailableScamModel(IReadOnlyList<string> missingFiles) : I
 {
     public IReadOnlyList<string> MissingFiles => missingFiles;
 
+    public bool IsAvailable => false;
+
     public Task<ModelPrediction> PredictAsync(string maskedText, CancellationToken cancellationToken) =>
         throw new ScamModelUnavailableException($"Model files not found: {string.Join(", ", missingFiles)}");
 }

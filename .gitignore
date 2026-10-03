@@ -32,6 +32,7 @@ Thumbs.db
 
 node_modules/
 *.zip
+extension/vendor/
 
 # ===== Visual Studio =====
 ## Ignore Visual Studio temporary files, build results, and

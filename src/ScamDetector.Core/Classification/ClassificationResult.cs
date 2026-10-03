@@ -1,3 +1,4 @@
+using ScamDetector.Core.ThreatIntel;
 using ScamDetector.Core.Urls;
 
 namespace ScamDetector.Core.Classification;
@@ -7,16 +8,25 @@ public sealed record ClassificationResult(MessageLabel Label, double Confidence,
     public static ClassificationResult From(
         ModelPrediction prediction,
         IReadOnlyList<UrlFinding> urlFindings,
+        double scamThreshold) =>
+        From(prediction, urlFindings, ThreatMatch.None, scamThreshold);
+
+    public static ClassificationResult From(
+        ModelPrediction prediction,
+        IReadOnlyList<UrlFinding> urlFindings,
+        ThreatMatch threat,
         double scamThreshold)
     {
         var scamProbability = prediction.ProbabilityOf(MessageLabel.Scam);
         var reasons = new List<string>();
 
-        if (scamProbability >= scamThreshold)
+        if (scamProbability >= scamThreshold || threat.IsStrongSignal)
         {
-            reasons.Add(ClassificationReasons.ModelPredictedScam);
+            if (scamProbability >= scamThreshold)
+                reasons.Add(ClassificationReasons.ModelPredictedScam);
+            reasons.AddRange(threat.Reasons());
             reasons.AddRange(urlFindings.Select(finding => finding.Reason));
-            return new ClassificationResult(MessageLabel.Scam, scamProbability, reasons);
+            return new ClassificationResult(MessageLabel.Scam, Math.Max(scamProbability, threat.SignalConfidence), reasons);
         }
 
         var label = PickNonScamLabel(prediction);
@@ -28,6 +38,12 @@ public sealed record ClassificationResult(MessageLabel Label, double Confidence,
 
         return new ClassificationResult(label, prediction.ProbabilityOf(label), reasons);
     }
+
+    public static ClassificationResult FromThreatSignals(ThreatMatch threat, IReadOnlyList<UrlFinding> urlFindings) =>
+        new(
+            MessageLabel.Scam,
+            threat.SignalConfidence,
+            [.. threat.Reasons(), .. urlFindings.Select(finding => finding.Reason)]);
 
     private static MessageLabel PickNonScamLabel(ModelPrediction prediction) =>
         prediction.ProbabilityOf(MessageLabel.Spam) > prediction.ProbabilityOf(MessageLabel.Normal)

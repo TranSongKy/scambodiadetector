@@ -120,3 +120,31 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Đã kiểm chứng:** Train một bộ BPE 1500 merge (cùng kiểu fastBPE) trên văn bản tiếng Việt ngẫu nhiên, so `PhobertTokenizer` của `transformers` với `PhoBertTokenizer` .NET trên 3005 câu (gồm chữ hoa, emoji, placeholder, chuỗi rỗng, câu dài bị cắt ở 256 token): khớp 3005/3005.
 - **Trong CI:** Job `tokenizer-parity` tải tokenizer thật của `vinai/phobert-base-v2`, sinh `tokenizer-golden.json` bằng `scripts/make_tokenizer_golden.py` (chỉ cần `transformers`, không cần `torch`) rồi chạy `scripts/VerifyTokenizer.cs`. Mọi thay đổi ở `Tokenization/` đều được kiểm tra với vocab thật.
 - **Hợp đồng export:** Workflow `model-contract.yml` (chạy khi đổi script train, Core, Onnx/Tokenization hoặc Api) tải `vinai/phobert-base-v2` với head 3 nhãn chưa train, export bằng chính `export_onnx` của script train, so logits PyTorch/ONNX, đối chiếu tokenizer, rồi chạy `ScamDetector.Api` bản publish với model đó và gọi `/api/v1/classifications`. Model chưa train nên kết quả vô nghĩa; mục tiêu là bắt lỗi tên input/output, kiểu dữ liệu, shape và opset trước khi tốn công train thật.
+
+## 018. Extension dạng side panel, đọc chữ trong ảnh ngay trên máy người dùng
+
+- **Bối cảnh:** Người dùng muốn mở extension ra một cửa sổ nhỏ để dán nội dung hoặc **ảnh chụp màn hình** tin nhắn, rồi để API xác định có lừa đảo không.
+- **Giao diện:** Side panel (`chrome.sidePanel`) thay cho popup: không tự đóng khi bấm ra ngoài, đủ chỗ cho ảnh xem trước và kết quả. Bôi đen giữ cách chuột phải → Kiểm tra để không cần quyền đọc mọi trang web.
+- **OCR trên máy (Tesseract.js, dữ liệu `vie` bản `4.0.0_best_int`, 1,4 MB):** Ảnh chụp thường có tên, số tài khoản, tin nhắn riêng; đọc trên máy nghĩa là ảnh không bao giờ gửi đi, chỉ phần chữ (người dùng xem và sửa được) tới API. Backend không phải đổi gì. Ảnh nền tối được đảo màu, ảnh nhỏ được phóng to trước khi đọc.
+- **Đã đo:** Ảnh chụp tin nhắn tiếng Việt (SMS, Zalo, OTP, chế độ tối) đọc đúng 100% ký tự, 0,3–0,5 giây mỗi ảnh sau lần khởi tạo đầu (~1 giây).
+- **Gói npm:** `tesseract.js` (OCR, chạy WebAssembly; manifest cần `'wasm-unsafe-eval'`), `@tesseract.js-data/vie` (dữ liệu tiếng Việt), `playwright` (dev, chỉ cho test e2e chạy Chromium thật). Các file Tesseract được chép vào `extension/vendor/` khi `npm run build` (không commit, ~13 MB) vì Manifest V3 cấm tải code từ xa.
+- **Đánh đổi:** Gói extension nặng thêm ~13 MB; OCR kém hơn với ảnh mờ, chữ viết tay hoặc font lạ. Người dùng luôn thấy và sửa được chữ đã đọc trước khi kiểm tra.
+
+## 019. Tự cập nhật danh sách chặn và văn mẫu lừa đảo, hai tầng
+
+- **Bối cảnh:** Kẻ lừa đảo đổi tên miền và kịch bản liên tục; model chỉ học lại được khi train lại, chậm và tốn công gán nhãn.
+- **Lựa chọn:** Hai tầng. Tầng 1: danh sách tên miền và văn mẫu cập nhật hằng ngày, áp dụng ngay khi PR được merge (API nạp lại file khi đổi, không khởi động lại). Tầng 2: dữ liệu train chỉ vào `dataset.csv` sau khi người gán nhãn, không bao giờ tự động (giữ quy tắc 3 trong CLAUDE.md).
+- **Ra quyết định:** Trùng tên miền chặn (gồm subdomain) hoặc trùng ≥ 60% cụm 3 từ của văn mẫu → `scam`, kể cả khi model nói khác hoặc chưa có model. Đây là tín hiệu mạnh vì mỗi mục đều có nguồn chính thống và được người duyệt; độ tin cậy 0.99 cho tên miền, bằng tỉ lệ trùng cho văn mẫu. Khi chưa có model và không trùng gì, API vẫn trả 503 như cũ.
+- **So khớp văn mẫu:** So trên text đã ẩn danh (cùng `ModelInputMasker`), token là placeholder hoặc chuỗi chữ/số, chữ thường, NFC. Độ phủ = số cụm 3 từ của văn mẫu xuất hiện trong tin / tổng số cụm của văn mẫu, nên tin dài có thêm lời chào vẫn khớp. Cài đặt song song ở Python (`similarity.py`) và C# (`TemplateShingles`).
+- **Crawler (chỉ thư viện chuẩn Python):** Đọc `robots.txt`, chờ giữa request cùng host, giới hạn kích thước trang. Chỉ lấy tên miền nằm trong đoạn có ngữ cảnh cảnh báo; bỏ tên miền trong danh sách trắng (`allowed_domains.csv`, ngân hàng, ví, cơ quan nhà nước, báo chí) và bỏ gốc của nền tảng dùng chung (`blogspot.com`, `github.io`...; chỉ subdomain mới bị chặn). Văn mẫu phải có dấu hiệu lừa đảo, lời kêu gọi hành động, và không phải lời khuyên hay lời kể của nạn nhân.
+- **Mạng xã hội chỉ nhập tay:** Tự động scrape Facebook/Zalo vi phạm điều khoản và dễ thu thập dữ liệu cá nhân, nên chỉ nhận qua `manual_submissions.csv`.
+- **GitHub Actions mở PR thay vì commit thẳng:** Một tên miền chặn nhầm (ví dụ trang ngân hàng thật) gây hại ngay cho người dùng, nên luôn có người duyệt.
+- **Đánh đổi:** Phụ thuộc cấu trúc HTML của từng nguồn; nguồn đổi giao diện thì crawler trả lỗi (ghi trong báo cáo, không làm hỏng lần chạy). URL nguồn chưa kiểm chứng được từ môi trường phát triển (bị chặn mạng), được kiểm tra bằng job chạy thử trong CI. Nguồn danh sách đen cộng đồng (loại `domain_list`) đã có code nhưng chưa thêm vào `sources.json` vì chưa xác nhận được URL.
+
+## 020. Agent duyệt dữ liệu threat-intel với ràng buộc cứng
+
+- **Bối cảnh:** Mỗi ngày có thể có hàng chục mục mới; người duyệt cần trợ giúp nhưng không thể để AI tự quyết đưa dữ liệu vào hệ thống.
+- **Lựa chọn:** Hai lớp. Lớp 1 là luật cứng chạy bằng code (`validate_threat_intel.py`, chạy trong CI và trước khi mở PR): định dạng, không còn dữ liệu cá nhân sau khi ẩn danh, không trùng danh sách trắng, không phải gốc nền tảng dùng chung, không trùng mục đã loại. Lớp 2 là agent `threat-intel-reviewer` đánh giá ngữ nghĩa (tên miền có thật là giả mạo không, văn mẫu có phải tin lừa thật không).
+- **Ràng buộc của agent:** không truy cập mạng và không mở link trong dữ liệu (tránh bị trang lừa đảo tác động hoặc prompt injection), chỉ được loại qua `reject_threat_intel.py` (không thêm, không sửa), chỉ duyệt dòng mới so với `origin/main`, không đọc `data/raw/`, không commit/push/merge. Trường hợp không chắc thì xếp CẦN NGƯỜI XEM, không đoán. Báo cáo cảnh báo nguồn có hơn 30% mục bị loại.
+- **Đã thử:** Bộ 7 tên miền và 5 văn mẫu gồm cả bẫy (gốc `blogspot.com`, trang bán lẻ thật, lời khuyên của công an, lời kể nạn nhân, thông báo OTP hợp lệ): agent xử lý đúng cả 12 mục.
+- **Mục bị loại lưu dấu vân tay:** `rejected_templates.csv` chỉ lưu SHA-256 (12 ký tự hex) của từng cụm 3 từ, không lưu nội dung, vì đoạn bị loại có thể chứa tên thật hay chi tiết riêng tư; vẫn đủ để nhận ra văn mẫu gần giống khi crawl lại.

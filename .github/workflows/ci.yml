@@ -82,6 +82,8 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: python -m unittest discover -s scripts/tests -t .
+      - name: Validate threat intel
+        run: python scripts/validate_threat_intel.py
       - name: Validate dataset
         run: |
           if [ "$(wc -l < data/processed/dataset.csv)" -gt 1 ]; then
@@ -100,8 +102,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
       - run: npm test
-      - run: zip -r ../scambodia-extension.zip manifest.json src
+      - run: npx playwright install --with-deps chromium
+      - name: End-to-end test (side panel, OCR, API calls)
+        run: npm run test:e2e
+      - run: npm run package
       - uses: actions/upload-artifact@v4
         with:
           name: chrome-extension
@@ -141,3 +149,5 @@ jobs:
               -d '{"text":"xin chao"}' http://localhost:8080/api/v1/classifications)
             test "$code" = "503"
           fi
+          docker exec app test -s /threat-intel/blocked_domains.csv
+          docker exec app test -s /threat-intel/scam_templates.csv

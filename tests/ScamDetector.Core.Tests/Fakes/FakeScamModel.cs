@@ -2,8 +2,10 @@ using ScamDetector.Core.Classification;
 
 namespace ScamDetector.Core.Tests.Fakes;
 
-public sealed class FakeScamModel(ModelPrediction prediction) : IScamModel
+public sealed class FakeScamModel(ModelPrediction prediction, bool isAvailable = true) : IScamModel
 {
+    public bool IsAvailable => isAvailable;
+
     public int CallCount { get; private set; }
 
     public string? ReceivedText { get; private set; }
