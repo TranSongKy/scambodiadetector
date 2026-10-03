@@ -77,6 +77,18 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(ARTICLE_URL, items[0].link)
         self.assertIn("giả mạo", items[0].summary)
 
+    def test_feed_text_is_unescaped_and_stripped_of_tags(self) -> None:
+        feed = (
+            "<rss><channel><item><title>Kh&amp;ocirc;ng chuyển tiền &amp;amp;apos;lạ&amp;amp;apos;</title>"
+            "<link>https://a.vn/1</link><description>&lt;p&gt;Cảnh b&amp;aacute;o &lt;b&gt;lừa đảo&lt;/b&gt;&lt;/p&gt;"
+            "</description></item></channel></rss>"
+        )
+
+        item = parse_feed(feed)[0]
+
+        self.assertEqual("Không chuyển tiền 'lạ'", item.title)
+        self.assertEqual("Cảnh báo lừa đảo", item.summary)
+
     def test_parse_atom_entries(self) -> None:
         atom = (
             '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>Cảnh báo</title>'

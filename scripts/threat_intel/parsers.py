@@ -1,3 +1,4 @@
+import html
 import re
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
@@ -87,16 +88,21 @@ def _child_text(element: ElementTree.Element, *names: str) -> str:
     return ""
 
 
+def _clean_feed_text(text: str) -> str:
+    without_tags = re.sub(r"<[^>]+>", " ", html.unescape(text))
+    return WHITESPACE.sub(" ", html.unescape(without_tags)).strip()
+
+
 def parse_feed(xml_text: str) -> list[FeedItem]:
     root = ElementTree.fromstring(xml_text)
     atom = "{http://www.w3.org/2005/Atom}"
     entries = root.findall(".//item") or root.findall(f".//{atom}entry")
     return [
         FeedItem(
-            title=_child_text(entry, "title", f"{atom}title"),
+            title=_clean_feed_text(_child_text(entry, "title", f"{atom}title")),
             link=_child_text(entry, "link", f"{atom}link"),
             published=_child_text(entry, "pubDate", f"{atom}published", f"{atom}updated"),
-            summary=re.sub(r"<[^>]+>", " ", _child_text(entry, "description", f"{atom}summary")),
+            summary=_clean_feed_text(_child_text(entry, "description", f"{atom}summary")),
         )
         for entry in entries
     ]
