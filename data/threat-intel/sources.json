@@ -1,0 +1,64 @@
+[
+  {
+    "name": "khonggianmang-canh-bao",
+    "kind": "html_list",
+    "category": "co-quan-chuc-nang",
+    "url": "https://khonggianmang.vn/bai-viet/canh-bao-an-toan-thong-tin",
+    "link_pattern": "khonggianmang\\.vn/bai-viet/[^?#]+",
+    "max_items": 10
+  },
+  {
+    "name": "tinnhiemmang-website-lua-dao",
+    "kind": "html_list",
+    "category": "co-quan-chuc-nang",
+    "url": "https://tinnhiemmang.vn/danh-sach-website-lua-dao",
+    "link_pattern": "tinnhiemmang\\.vn/(?:canh-bao|tin-tuc)/[^?#]+",
+    "max_items": 10
+  },
+  {
+    "name": "bocongan-tin-tuc",
+    "kind": "rss",
+    "category": "co-quan-chuc-nang",
+    "url": "https://bocongan.gov.vn/rss/tin-tuc-su-kien.rss",
+    "max_items": 10
+  },
+  {
+    "name": "chongluadao-blacklist",
+    "kind": "domain_list",
+    "category": "cong-dong",
+    "url": "https://raw.githubusercontent.com/chongluadao/chongluadao/master/blacklist.json"
+  },
+  {
+    "name": "vnexpress-phap-luat",
+    "kind": "rss",
+    "category": "bao-chi",
+    "url": "https://vnexpress.net/rss/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "vnexpress-so-hoa",
+    "kind": "rss",
+    "category": "bao-chi",
+    "url": "https://vnexpress.net/rss/so-hoa.rss",
+    "max_items": 15
+  },
+  {
+    "name": "tuoitre-phap-luat",
+    "kind": "rss",
+    "category": "bao-chi",
+    "url": "https://tuoitre.vn/rss/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "dantri-phap-luat",
+    "kind": "rss",
+    "category": "bao-chi",
+    "url": "https://dantri.com.vn/rss/phap-luat.rss",
+    "max_items": 15
+  },
+  {
+    "name": "nhap-tay-mang-xa-hoi",
+    "kind": "manual",
+    "category": "mang-xa-hoi"
+  }
+]
