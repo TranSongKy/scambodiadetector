@@ -23,12 +23,6 @@
     "max_items": 10
   },
   {
-    "name": "chongluadao-blacklist",
-    "kind": "domain_list",
-    "category": "cong-dong",
-    "url": "https://raw.githubusercontent.com/chongluadao/chongluadao/master/blacklist.json"
-  },
-  {
     "name": "vnexpress-phap-luat",
     "kind": "rss",
     "category": "bao-chi",

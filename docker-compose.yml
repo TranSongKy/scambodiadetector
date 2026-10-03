@@ -29,6 +29,7 @@ services:
       Database__ApplyMigrationsOnStartup: "true"
     volumes:
       - ./models:/models:ro
+      - ./data/threat-intel:/threat-intel:ro
     depends_on:
       sqlserver:
         condition: service_healthy
@@ -48,6 +49,7 @@ services:
       ConnectionStrings__ScamDetector: Server=sqlserver;Database=ScamDetector;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True
     volumes:
       - ./models:/models:ro
+      - ./data/threat-intel:/threat-intel:ro
     depends_on:
       api:
         condition: service_started

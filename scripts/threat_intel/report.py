@@ -30,5 +30,10 @@ def render_report(results: list[SourceResult], update: UpdateResult, dry_run: bo
     errors = [error for result in results for error in result.errors]
     if errors:
         lines += ["", "### Lỗi", ""] + [f"- {error}" for error in errors[:MAX_LISTED_ITEMS]]
-    lines += ["", "Người duyệt: kiểm tra từng tên miền và văn mẫu trước khi merge; xóa dòng sai khỏi CSV nếu cần."]
+    lines += [
+        "",
+        "Người duyệt: kiểm tra từng tên miền và văn mẫu trước khi merge (có thể dùng agent threat-intel-reviewer).",
+        "Loại mục sai bằng `python scripts/reject_threat_intel.py --domain|--template ... --reason ...`,",
+        "không xóa tay để lần crawl sau không thêm lại.",
+    ]
     return "\n".join(lines) + "\n"

@@ -2,6 +2,7 @@ using System.Text;
 using ScamDetector.Core.Classification;
 using ScamDetector.Core.Tests.Builders;
 using ScamDetector.Core.Tests.Fakes;
+using ScamDetector.Core.ThreatIntel;
 using ScamDetector.Core.Urls;
 
 namespace ScamDetector.Core.Tests.Classification;
@@ -225,5 +226,121 @@ public sealed class MessageClassifierTests
 
         Assert.Equal("gọi <PHONE> hoặc <EMAIL>", _model.ReceivedText);
         Assert.Equal("gọi 0900000000 hoặc a@b.example", _urlInspector.ReceivedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndStrongThreat_DoesNotCallModelAndReturnsScam()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 1, spam: 0, scam: 0), isAvailable: false);
+        var threat = new FakeThreatIntelligence(new ThreatMatch(["bad.example"], null));
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(0, model.CallCount);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+        Assert.Equal(ThreatMatch.BlocklistedDomainConfidence, result.Value.Confidence);
+        Assert.Equal([ThreatReasons.BlocklistedDomain, UrlReason], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndTemplateThreat_ReturnsScamWithTemplateReason()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 1, spam: 0, scam: 0), isAvailable: false);
+        var threat = new FakeThreatIntelligence(new ThreatMatch([], new TemplateMatch("t1", 0.8)));
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(0, model.CallCount);
+        Assert.Equal(0.8, result.Value.Confidence);
+        Assert.Equal([ThreatReasons.KnownScamTemplate, UrlReason], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndNoThreat_StillCallsModel()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05), isAvailable: false);
+        var threat = new FakeThreatIntelligence(ThreatMatch.None);
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(1, model.CallCount);
+        Assert.Equal(MessageLabel.Normal, result.Value.Label);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndDefaultThreatIntelligence_StillCallsModel()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05), isAvailable: false);
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions());
+
+        await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(1, model.CallCount);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelAvailableAndStrongThreat_CallsModelAndOverridesNormalPrediction()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05));
+        var threat = new FakeThreatIntelligence(new ThreatMatch(["bad.example"], null));
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(1, model.CallCount);
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+        Assert.Equal([ThreatReasons.BlocklistedDomain, UrlReason], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_WithThreatIntelligence_PassesNormalizedAndMaskedText()
+    {
+        var threat = new FakeThreatIntelligence(ThreatMatch.None);
+        var classifier = new MessageClassifier(_model, _urlInspector, new ClassificationOptions(), threat);
+
+        await classifier.ClassifyAsync("  Nhấn   http://a.example/x để nhận quà ", CancellationToken.None);
+
+        Assert.Equal(1, threat.CallCount);
+        Assert.Equal("Nhấn http://a.example/x để nhận quà", threat.ReceivedNormalizedText);
+        Assert.Equal("Nhấn <URL> để nhận quà", threat.ReceivedMaskedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_DecomposedText_PassesNfcTextToThreatIntelligence()
+    {
+        var threat = new FakeThreatIntelligence(ThreatMatch.None);
+        var classifier = new MessageClassifier(_model, _urlInspector, new ClassificationOptions(), threat);
+
+        await classifier.ClassifyAsync(AccentedText.Normalize(NormalizationForm.FormD), CancellationToken.None);
+
+        Assert.Equal(AccentedText, threat.ReceivedNormalizedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_EmptyText_DoesNotCallThreatIntelligence()
+    {
+        var threat = new FakeThreatIntelligence(ThreatMatch.None);
+        var classifier = new MessageClassifier(_model, _urlInspector, new ClassificationOptions(), threat);
+
+        await classifier.ClassifyAsync(" ", CancellationToken.None);
+
+        Assert.Equal(0, threat.CallCount);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_RealIndexWithBlockedDomain_ReturnsScamEvenWhenModelSaysNormal()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05));
+        var index = new ThreatIntelligenceIndex(["a.example"], []);
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions(), index);
+
+        var result = await classifier.ClassifyAsync("Nhấn http://www.a.example/x", CancellationToken.None);
+
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+        Assert.Contains(ThreatReasons.BlocklistedDomain, result.Value.Reasons);
     }
 }

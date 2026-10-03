@@ -1,5 +1,6 @@
 using ScamDetector.Bot.Messaging;
 using ScamDetector.Core.Classification;
+using ScamDetector.Core.ThreatIntel;
 using ScamDetector.Core.Urls;
 
 namespace ScamDetector.Bot.Tests.Messaging;
@@ -15,6 +16,8 @@ public sealed class ReasonDescriptionsTests
         UrlReasons.IpAddressHost,
         UrlReasons.Punycode,
         UrlReasons.SuspiciousTopLevelDomain,
+        ThreatReasons.BlocklistedDomain,
+        ThreatReasons.KnownScamTemplate,
     };
 
     [Theory]

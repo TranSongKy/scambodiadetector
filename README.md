@@ -114,9 +114,9 @@ curl -X POST http://localhost:5234/api/v1/classifications \
 
 | Trường | Ý nghĩa |
 |---|---|
-| `label` | `scam`, `spam` hoặc `normal`. Chỉ kết luận `scam` khi xác suất ≥ `Classification:ScamThreshold` (mặc định 0.7) |
-| `confidence` | Xác suất của nhãn được chọn |
-| `reasons` | `model_predicted_scam`, `model_predicted_spam`, `scam_probability_below_threshold`, `url_shortener`, `url_ip_address_host`, `url_punycode`, `url_suspicious_tld` |
+| `label` | `scam`, `spam` hoặc `normal`. Kết luận `scam` khi xác suất ≥ `Classification:ScamThreshold` (mặc định 0.7), hoặc khi tin có link thuộc danh sách tên miền lừa đảo, hoặc trùng văn mẫu lừa đảo đã biết (xem [Cập nhật dữ liệu lừa đảo](#cập-nhật-dữ-liệu-lừa-đảo)) |
+| `confidence` | Xác suất của nhãn được chọn (khi trùng danh sách chặn: 0.99; khi trùng văn mẫu: tỉ lệ trùng nếu cao hơn xác suất model) |
+| `reasons` | `model_predicted_scam`, `model_predicted_spam`, `scam_probability_below_threshold`, `url_shortener`, `url_ip_address_host`, `url_punycode`, `url_suspicious_tld`, `url_blocklisted`, `matches_known_scam_template` |
 
 Lỗi trả về theo RFC 9457 (`application/problem+json`):
 
@@ -125,7 +125,7 @@ Lỗi trả về theo RFC 9457 (`application/problem+json`):
 | 400 | Text rỗng | `classification.empty_text` |
 | 400 | Text dài hơn 2000 ký tự | `classification.text_too_long` |
 | 400 | JSON sai | — |
-| 503 | Chưa có file model | — |
+| 503 | Chưa có file model và tin không trùng danh sách chặn hay văn mẫu | — |
 
 ### `POST /api/v1/reports`
 
@@ -192,6 +192,38 @@ npm run test:e2e     # mở Chromium thật với extension: dán ảnh, OCR, g�
 npm run package      # tạo scambodia-extension.zip để tải lên Chrome Web Store
 ```
 
+## Cập nhật dữ liệu lừa đảo
+
+Hệ thống tự cập nhật hai loại dữ liệu từ nguồn công khai, không cần train lại model:
+
+| File | Nội dung | Dùng ở đâu |
+|---|---|---|
+| `data/threat-intel/blocked_domains.csv` | Tên miền lừa đảo đã được cảnh báo, kèm nguồn và đoạn trích làm bằng chứng | Tin có link tới tên miền này (hoặc subdomain) → `scam`, lý do `url_blocklisted` |
+| `data/threat-intel/scam_templates.csv` | Văn mẫu lừa đảo đã ẩn danh (`<URL>`, `<PHONE>`...) | Tin trùng ≥ 60% cụm 3 từ của một văn mẫu → `scam`, lý do `matches_known_scam_template` |
+
+Hai luồng tách biệt (quyết định 019):
+
+1. **Danh sách chặn và văn mẫu**: workflow `threat-intel.yml` chạy mỗi ngày, crawl nguồn trong `data/threat-intel/sources.json`, chạy luật cứng `validate_threat_intel.py`, rồi mở PR `threat-intel/daily` có báo cáo. Merge PR là API/bot tự nạp lại dữ liệu (kiểm tra thay đổi mỗi `ThreatIntel:ReloadCheckSeconds` giây), không cần khởi động lại.
+2. **Dữ liệu train model**: không bao giờ tự động. Văn mẫu chỉ là gợi ý; muốn đưa vào `dataset.csv` phải gán nhãn tay theo `docs/data-schema.md`.
+
+Nguồn: cơ quan chức năng (khonggianmang.vn, tinnhiemmang.vn, Bộ Công an), báo chí (RSS VnExpress, Tuổi Trẻ, Dân trí) và **mạng xã hội chỉ qua nhập tay**: dán tin vào `data/threat-intel/manual_submissions.csv` (cột `text,source_url,note`). Không tự động crawl Facebook/Zalo. Crawler tuân thủ `robots.txt`, chờ giữa các request, user agent `ScambodiaDetectorBot/1.0`.
+
+```bash
+python scripts/crawl_threat_intel.py --dry-run --report report.md   # chạy thử, không ghi file
+python scripts/crawl_threat_intel.py --only vnexpress-phap-luat     # một nguồn
+python scripts/validate_threat_intel.py                              # luật cứng
+python scripts/reject_threat_intel.py --domain abc.xyz --reason "Trang chính thức, bị trích nhầm"
+python scripts/reject_threat_intel.py --template tpl_000012 --reason "Lời khuyên của công an, không phải tin lừa"
+```
+
+Loại mục sai bằng `reject_threat_intel.py`, đừng xóa tay: mục bị loại được ghi vào `rejected_*.csv` (văn mẫu chỉ lưu dấu vân tay SHA-256, không lưu nội dung) để lần crawl sau không thêm lại.
+
+**Agent duyệt** `threat-intel-reviewer` (`.claude/agents/`, quyết định 020) duyệt PR cập nhật với ràng buộc cứng: không truy cập mạng, không mở link trong dữ liệu, chỉ được loại (không thêm, không sửa), chỉ xem dòng mới so với `origin/main`, không commit/push/merge. Agent xếp từng mục vào CHẤP NHẬN / LOẠI / CẦN NGƯỜI XEM theo tiêu chí ghi trong file agent, rồi báo cáo; người vẫn là người merge. Cách dùng: checkout nhánh `threat-intel/daily`, trong Claude Code gõ "dùng agent threat-intel-reviewer duyệt nhánh này".
+
+Cấu hình (`appsettings.json`, biến môi trường `ThreatIntel__*`): `DataDirectory` (mặc định `../../data/threat-intel`, trong Docker là `/threat-intel`), `MinimumTemplateCoverage` (0.6), `ReloadCheckSeconds` (60).
+
+Thiết lập GitHub một lần: Settings → Actions → General → bật *Allow GitHub Actions to create and approve pull requests*. PR tạo bằng `GITHUB_TOKEN` không kích hoạt CI; muốn CI chạy trên PR cập nhật, tạo fine-grained token (quyền Contents và Pull requests: write) và lưu vào secret `THREAT_INTEL_TOKEN`. Với PR sửa crawler hoặc `sources.json`, workflow chạy thử toàn bộ nguồn và đưa báo cáo vào Job summary để kiểm tra URL và parser còn đúng.
+
 ## Database
 
 SQL Server qua EF Core, bảng `MessageReports`. Cấu hình bằng `ConnectionStrings:ScamDetector`; để trống thì API vẫn chạy, chỉ `/api/v1/reports` trả 503.
@@ -220,6 +252,7 @@ docker compose --profile bot up --build # thêm bot
 ```
 
 - Image chạy bằng user không phải root, cổng `8080`.
+- Danh sách chặn và văn mẫu được chép vào image tại `/threat-intel`. Compose mount `./data/threat-intel` vào đó, nên `git pull` là container tự nạp dữ liệu mới.
 - Model mount vào `/models` (chỉ đọc). Đổi đường dẫn bằng biến môi trường `OnnxModel__ModelPath`, `OnnxModel__VocabularyPath`, `OnnxModel__BpeCodesPath`.
 - Đổi ngưỡng bằng `Classification__ScamThreshold` (trong khoảng (0, 1], sai thì app dừng khi khởi động).
 - Số thread ONNX Runtime: `OnnxModel__IntraOpNumThreads` (0 = tự chọn theo số CPU). Khi giới hạn CPU cho container, đặt bằng số CPU được cấp để tránh tranh chấp.
@@ -242,4 +275,4 @@ Model export phải khớp các điểm sau, nếu không kết quả sẽ sai m
 
 ## CI
 
-`.github/workflows/ci.yml` chạy build và test .NET, chạy migration trên SQL Server thật, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container.
+`.github/workflows/ci.yml` chạy build và test .NET, chạy migration trên SQL Server thật, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container, và chạy `validate_threat_intel.py`. `.github/workflows/threat-intel.yml` crawl hằng ngày và mở PR cập nhật dữ liệu lừa đảo.

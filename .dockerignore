@@ -6,7 +6,8 @@
 .vs/
 .vscode/
 .idea/
-data/
+data/*
+!data/threat-intel/
 models/
 notebooks/
 tests/

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ScamDetector.Core.Reports;
 using ScamDetector.Infrastructure.HealthChecks;
 using ScamDetector.Infrastructure.Persistence;
@@ -13,7 +14,7 @@ public static class PersistenceServiceCollectionExtensions
 
     public static IServiceCollection AddScamDetectorPersistence(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton(TimeProvider.System);
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IMessageReportService, MessageReportService>();
         services.AddSingleton(configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions());
 

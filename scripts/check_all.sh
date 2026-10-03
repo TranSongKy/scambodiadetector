@@ -21,6 +21,9 @@ ruff format --check .
 step "Python unit tests"
 python3 -m unittest discover -s scripts/tests -t .
 
+step "Threat intel"
+python3 scripts/validate_threat_intel.py
+
 step "Dataset"
 if [ "$(wc -l < data/processed/dataset.csv)" -gt 1 ]; then
     python3 scripts/validate_dataset.py data/processed/dataset.csv

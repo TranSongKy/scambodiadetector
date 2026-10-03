@@ -1,5 +1,6 @@
 using ScamDetector.Core.Classification;
 using ScamDetector.Core.Tests.Builders;
+using ScamDetector.Core.ThreatIntel;
 using ScamDetector.Core.Urls;
 
 namespace ScamDetector.Core.Tests.Classification;
@@ -163,5 +164,93 @@ public sealed class ClassificationResultTests
         var result = ClassificationResult.From(prediction, NoFindings, scamThreshold: 0);
 
         Assert.Equal(MessageLabel.Scam, result.Label);
+    }
+
+    [Fact]
+    public void From_ModelNormalButBlocklistedDomain_ReturnsScamWithBlocklistConfidence()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05);
+        var threat = new ThreatMatch(["bad.example"], null);
+
+        var result = ClassificationResult.From(prediction, NoFindings, threat, Threshold);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(ThreatMatch.BlocklistedDomainConfidence, result.Confidence);
+        Assert.Equal([ThreatReasons.BlocklistedDomain], result.Reasons);
+    }
+
+    [Fact]
+    public void From_ModelNormalButTemplateMatch_ReturnsScamWithTemplateReasonAndUrlReasons()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05);
+        var threat = new ThreatMatch([], new TemplateMatch("t1", 0.8));
+
+        var result = ClassificationResult.From(prediction, TwoFindings, threat, Threshold);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(0.8, result.Confidence);
+        Assert.Equal([ThreatReasons.KnownScamTemplate, FirstUrlReason, SecondUrlReason], result.Reasons);
+    }
+
+    [Fact]
+    public void From_ModelScamHigherThanThreatConfidence_UsesModelProbability()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.0, spam: 0.0, scam: 1.0);
+        var threat = new ThreatMatch([], new TemplateMatch("t1", 0.6));
+
+        var result = ClassificationResult.From(prediction, NoFindings, threat, Threshold);
+
+        Assert.Equal(1.0, result.Confidence);
+        Assert.Equal([ClassificationReasons.ModelPredictedScam, ThreatReasons.KnownScamTemplate], result.Reasons);
+    }
+
+    [Fact]
+    public void From_ThreatConfidenceHigherThanModelScam_UsesThreatConfidence()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.1, spam: 0.1, scam: 0.8);
+        var threat = new ThreatMatch(["bad.example"], null);
+
+        var result = ClassificationResult.From(prediction, NoFindings, threat, Threshold);
+
+        Assert.Equal(ThreatMatch.BlocklistedDomainConfidence, result.Confidence);
+        Assert.Equal([ClassificationReasons.ModelPredictedScam, ThreatReasons.BlocklistedDomain], result.Reasons);
+    }
+
+    [Fact]
+    public void From_NoThreat_BehavesLikeOverloadWithoutThreat()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.6, spam: 0.3, scam: 0.1);
+
+        var withNone = ClassificationResult.From(prediction, TwoFindings, ThreatMatch.None, Threshold);
+        var without = ClassificationResult.From(prediction, TwoFindings, Threshold);
+
+        Assert.Equal(without.Label, withNone.Label);
+        Assert.Equal(without.Confidence, withNone.Confidence);
+        Assert.Equal(without.Reasons, withNone.Reasons);
+    }
+
+    [Fact]
+    public void FromThreatSignals_BlocklistedDomainAndUrlFindings_ReturnsScamWithAllReasons()
+    {
+        var threat = new ThreatMatch(["bad.example"], new TemplateMatch("t1", 0.9));
+
+        var result = ClassificationResult.FromThreatSignals(threat, TwoFindings);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(ThreatMatch.BlocklistedDomainConfidence, result.Confidence);
+        Assert.Equal(
+            [ThreatReasons.BlocklistedDomain, ThreatReasons.KnownScamTemplate, FirstUrlReason, SecondUrlReason],
+            result.Reasons);
+    }
+
+    [Fact]
+    public void FromThreatSignals_TemplateOnlyAndNoUrlFindings_ReturnsTemplateCoverageAsConfidence()
+    {
+        var threat = new ThreatMatch([], new TemplateMatch("t1", 0.7));
+
+        var result = ClassificationResult.FromThreatSignals(threat, NoFindings);
+
+        Assert.Equal(0.7, result.Confidence);
+        Assert.Equal([ThreatReasons.KnownScamTemplate], result.Reasons);
     }
 }

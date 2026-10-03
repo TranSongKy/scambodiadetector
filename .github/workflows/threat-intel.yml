@@ -1,0 +1,79 @@
+name: Threat intel
+
+on:
+  schedule:
+    - cron: "17 23 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/threat_intel/**"
+      - "scripts/crawl_threat_intel.py"
+      - "data/threat-intel/sources.json"
+      - ".github/workflows/threat-intel.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: threat-intel-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Crawl every source without writing data
+        run: python scripts/crawl_threat_intel.py --dry-run --report "$RUNNER_TEMP/threat-intel-report.md"
+      - name: Publish report
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/threat-intel-report.md" ]; then
+            cat "$RUNNER_TEMP/threat-intel-report.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: threat-intel-dry-run
+          path: ${{ runner.temp }}/threat-intel-report.md
+          if-no-files-found: ignore
+
+  update:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Crawl sources and update data
+        run: python scripts/crawl_threat_intel.py --report "$RUNNER_TEMP/threat-intel-report.md"
+      - name: Enforce hard rules
+        run: python scripts/validate_threat_intel.py
+      - name: Python unit tests
+        run: python -m unittest discover -s scripts/tests -t .
+      - name: Date
+        id: date
+        run: echo "today=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Open review pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.THREAT_INTEL_TOKEN || github.token }}
+          branch: threat-intel/daily
+          delete-branch: true
+          add-paths: |
+            data/threat-intel/blocked_domains.csv
+            data/threat-intel/scam_templates.csv
+          commit-message: "data(threat-intel): cập nhật ngày ${{ steps.date.outputs.today }}"
+          title: "Threat intel: cập nhật ngày ${{ steps.date.outputs.today }}"
+          body-path: ${{ runner.temp }}/threat-intel-report.md
+          labels: threat-intel

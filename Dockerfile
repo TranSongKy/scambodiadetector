@@ -27,9 +27,11 @@ ENV APP_DLL=${PROJECT}.dll \
     ASPNETCORE_URLS=http://+:8080 \
     OnnxModel__ModelPath=/models/scam-detector.onnx \
     OnnxModel__VocabularyPath=/models/vocab.txt \
-    OnnxModel__BpeCodesPath=/models/bpe.codes
+    OnnxModel__BpeCodesPath=/models/bpe.codes \
+    ThreatIntel__DataDirectory=/threat-intel
 
 COPY --from=build /app ./
+COPY data/threat-intel/blocked_domains.csv data/threat-intel/scam_templates.csv /threat-intel/
 VOLUME ["/models"]
 EXPOSE 8080
 USER $APP_UID

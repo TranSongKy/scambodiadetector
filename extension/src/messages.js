@@ -14,6 +14,8 @@ export const REASON_DESCRIPTIONS = Object.freeze({
   url_ip_address_host: "Link dùng địa chỉ IP thay vì tên miền",
   url_punycode: "Tên miền dùng ký tự giả mạo (punycode)",
   url_suspicious_tld: "Tên miền có đuôi thường bị dùng để lừa đảo",
+  url_blocklisted: "Link nằm trong danh sách tên miền lừa đảo đã được cảnh báo",
+  matches_known_scam_template: "Nội dung trùng với mẫu tin lừa đảo đã được cảnh báo",
 });
 
 export const SCAM_ADVICE =

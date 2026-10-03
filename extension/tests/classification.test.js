@@ -137,6 +137,7 @@ test("reason descriptions cover every reason code defined in C#", () => {
   const sources = [
     "../src/ScamDetector.Core/Classification/ClassificationReasons.cs",
     "../src/ScamDetector.Core/Urls/UrlReasons.cs",
+    "../src/ScamDetector.Core/ThreatIntel/ThreatReasons.cs",
   ].map((path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"));
   const codes = sources.flatMap((source) => [...source.matchAll(/const string \w+ = "([a-z_]+)";/g)].map((m) => m[1]));
 
