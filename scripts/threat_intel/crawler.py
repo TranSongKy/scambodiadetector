@@ -5,10 +5,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from threat_intel.domains import extract_domains, extract_warned_domains, normalize_domain
+from threat_intel.domains import extract_domains, extract_warned_domains, is_allowed, normalize_domain
 from threat_intel.fetcher import FetchError
-from threat_intel.parsers import extract_links, extract_paragraphs, parse_feed
-from threat_intel.sources import DOMAIN_LIST_KIND, HTML_LIST_KIND, MANUAL_KIND, RSS_KIND, Source
+from threat_intel.parsers import extract_links, extract_paragraphs, extract_visible_text, parse_feed
+from threat_intel.sources import (
+    DOMAIN_LIST_KIND,
+    DOMAIN_PAGE_KIND,
+    HTML_LIST_KIND,
+    MANUAL_KIND,
+    RSS_KIND,
+    Source,
+)
 from threat_intel.store import MANUAL_SUBMISSIONS_FILE, read_rows
 from threat_intel.templates import evidence_excerpt, extract_quotes
 
@@ -90,6 +97,15 @@ def crawl_domain_list(source: Source, fetch: Callable[[str], str], result: Sourc
             result.domains.setdefault(domain, DomainSighting(source.url, source.name))
 
 
+def crawl_domain_page(source: Source, fetch: Callable[[str], str], result: SourceResult) -> None:
+    own_host = normalize_domain(urlsplit(source.url).netloc) or ""
+    evidence = f"Có trong danh sách của {own_host} ({source.name})"
+    for domain in sorted(extract_domains(extract_visible_text(fetch(source.url)))):
+        if not is_allowed(domain, {own_host}):
+            result.domains.setdefault(domain, DomainSighting(source.url, evidence))
+    result.articles += 1
+
+
 def crawl_manual(data_dir: Path, result: SourceResult) -> None:
     for row in read_rows(data_dir / MANUAL_SUBMISSIONS_FILE):
         text = row.get("text", "")
@@ -106,6 +122,7 @@ def crawl_source(source: Source, fetch: Callable[[str], str], data_dir: Path) ->
         RSS_KIND: lambda: crawl_rss(source, fetch, result),
         HTML_LIST_KIND: lambda: crawl_html_list(source, fetch, result),
         DOMAIN_LIST_KIND: lambda: crawl_domain_list(source, fetch, result),
+        DOMAIN_PAGE_KIND: lambda: crawl_domain_page(source, fetch, result),
         MANUAL_KIND: lambda: crawl_manual(data_dir, result),
     }
     try:

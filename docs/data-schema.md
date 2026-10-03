@@ -107,6 +107,6 @@ Không phải dữ liệu train. Dùng trực tiếp ở API (quyết định 01
 | `rejected_domains.csv` | `domain,reason,rejected_at` | Ghi bởi `reject_threat_intel.py` |
 | `rejected_templates.csv` | `fingerprint,reason,rejected_at` | Dấu vân tay, không lưu nội dung |
 | `manual_submissions.csv` | `text,source_url,note` | Tin nhập tay từ mạng xã hội; crawler ẩn danh trước khi thành văn mẫu |
-| `sources.json` | `name,kind,category,url,...` | `kind`: `rss`, `html_list`, `domain_list`, `manual`; URL phải `https` |
+| `sources.json` | `name,kind,category,url,...` | `kind`: `rss`, `html_list`, `domain_list`, `domain_page` (trang liệt kê tên miền lừa đảo), `manual`; URL phải `https` |
 
 Kiểm tra bằng `python scripts/validate_threat_intel.py`.

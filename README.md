@@ -206,7 +206,7 @@ Hai luồng tách biệt (quyết định 019):
 1. **Danh sách chặn và văn mẫu**: workflow `threat-intel.yml` chạy mỗi ngày, crawl nguồn trong `data/threat-intel/sources.json`, chạy luật cứng `validate_threat_intel.py`, rồi mở PR `threat-intel/daily` có báo cáo. Merge PR là API/bot tự nạp lại dữ liệu (kiểm tra thay đổi mỗi `ThreatIntel:ReloadCheckSeconds` giây), không cần khởi động lại.
 2. **Dữ liệu train model**: không bao giờ tự động. Văn mẫu chỉ là gợi ý; muốn đưa vào `dataset.csv` phải gán nhãn tay theo `docs/data-schema.md`.
 
-Nguồn: cơ quan chức năng (khonggianmang.vn, tinnhiemmang.vn, Bộ Công an), báo chí (RSS VnExpress, Tuổi Trẻ, Dân trí) và **mạng xã hội chỉ qua nhập tay**: dán tin vào `data/threat-intel/manual_submissions.csv` (cột `text,source_url,note`). Không tự động crawl Facebook/Zalo. Crawler tuân thủ `robots.txt`, chờ giữa các request, user agent `ScambodiaDetectorBot/1.0`.
+Nguồn: cơ quan chức năng (danh sách website lừa đảo và bài cảnh báo của tinnhiemmang.vn, bài cảnh báo của Bộ Công an), báo chí (RSS Thanh Niên, VietNamNet, Tuổi Trẻ, Dân trí) và **mạng xã hội chỉ qua nhập tay**: dán tin vào `data/threat-intel/manual_submissions.csv` (cột `text,source_url,note`). Không tự động crawl Facebook/Zalo. Crawler tuân thủ `robots.txt`, chờ giữa các request, user agent `ScambodiaDetectorBot/1.0`.
 
 ```bash
 python scripts/crawl_threat_intel.py --dry-run --report report.md   # chạy thử, không ghi file

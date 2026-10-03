@@ -4,8 +4,9 @@ import sys
 from collections.abc import Callable
 from xml.etree.ElementTree import ParseError
 
+from threat_intel.domains import extract_domains
 from threat_intel.fetcher import FetchError, PoliteFetcher
-from threat_intel.parsers import extract_links, extract_paragraphs, parse_feed
+from threat_intel.parsers import extract_links, extract_paragraphs, extract_visible_text, parse_feed
 
 FEED_HREF_PATTERN = re.compile(r"""href=["']([^"']*(?:rss|feed|atom)[^"']*)["']""", re.IGNORECASE)
 TITLE_PATTERN = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -25,6 +26,8 @@ def describe_page(url: str, content: str, link_pattern: str) -> list[str]:
     title = TITLE_PATTERN.search(content)
     lines.append(f"- Tiêu đề: {title.group(1).strip() if title else '(không có)'}")
     lines.append(f"- Số đoạn văn: {len(extract_paragraphs(content))}")
+    domains = sorted(extract_domains(extract_visible_text(content)))
+    lines.append(f"- Tên miền trong chữ của trang: {len(domains)}: {', '.join(domains[: MAX_LISTED * 2])}")
     feeds = list(dict.fromkeys(FEED_HREF_PATTERN.findall(content)))
     if feeds:
         lines.append("- Link feed tìm thấy:")

@@ -65,6 +65,34 @@ class _LinkParser(HTMLParser):
             self.links.append(href)
 
 
+class _VisibleTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.chunks: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in SKIPPED_TAGS:
+            self._skip_depth += 1
+        self.chunks.append(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in SKIPPED_TAGS and self._skip_depth:
+            self._skip_depth -= 1
+        self.chunks.append(" ")
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip_depth:
+            self.chunks.append(data)
+
+
+def extract_visible_text(html: str) -> str:
+    parser = _VisibleTextParser()
+    parser.feed(html)
+    parser.close()
+    return WHITESPACE.sub(" ", "".join(parser.chunks)).strip()
+
+
 def extract_paragraphs(html: str) -> list[str]:
     parser = _ArticleParser()
     parser.feed(html)

@@ -230,6 +230,16 @@ class CrawlTests(unittest.TestCase):
 
         self.assertEqual(1, result.articles)
 
+    def test_domain_page_source_reads_domains_from_table_cells(self) -> None:
+        url = "https://tinnhiemmang.vn/website-lua-dao"
+        self.pages[url] = fixture("domain_table.html")
+
+        result = crawl_source(Source(name="tnm", kind="domain_page", url=url), fake_fetch(self.pages), self.data_dir)
+
+        self.assertEqual({"vcb-xacminh.com", "bidv-hotro.top"}, set(result.domains))
+        self.assertIn("tinnhiemmang.vn", result.domains["vcb-xacminh.com"].evidence)
+        self.assertEqual(url, result.domains["vcb-xacminh.com"].source_url)
+
     def test_domain_list_source_reads_json_entries(self) -> None:
         source = Source(name="blacklist", kind="domain_list", url=BLACKLIST_URL)
 
