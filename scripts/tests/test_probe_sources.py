@@ -7,9 +7,11 @@ FEED = """<rss><channel><item><title>Cảnh báo lừa đảo</title><link>https
 PAGE = """<html><head><title>Tin tức</title><link rel="alternate" href="/rss/phap-luat.rss"></head>
 <body><p>Đoạn một</p><a href="/canh-bao-lua-dao-1.html">Bài</a><a href="/the-thao.html">Khác</a></body></html>"""
 
+ROBOTS = "User-agent: *\nDisallow: /search/"
+
 
 def fake_fetch(url: str) -> str:
-    pages = {"https://a.vn/rss": FEED, "https://a.vn/": PAGE}
+    pages = {"https://a.vn/rss": FEED, "https://a.vn/": PAGE, "https://a.vn/robots.txt": ROBOTS}
     if url not in pages:
         raise FetchError(f"404 {url}")
     return pages[url]
@@ -28,6 +30,11 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("/rss/phap-luat.rss", report)
         self.assertIn("https://a.vn/canh-bao-lua-dao-1.html", report)
         self.assertNotIn("the-thao", report)
+
+    def test_plain_text_is_printed(self) -> None:
+        report = probe(["https://a.vn/robots.txt"], "lua-dao", fake_fetch)
+
+        self.assertIn("Disallow: /search/", report)
 
     def test_fetch_error_is_reported(self) -> None:
         report = probe(["https://a.vn/missing"], "lua-dao", fake_fetch)
