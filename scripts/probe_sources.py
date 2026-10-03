@@ -11,6 +11,7 @@ from threat_intel.parsers import extract_links, extract_paragraphs, extract_visi
 FEED_HREF_PATTERN = re.compile(r"""href=["']([^"']*(?:rss|feed|atom)[^"']*)["']""", re.IGNORECASE)
 TITLE_PATTERN = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 MAX_LISTED = 15
+MAX_PLAIN_TEXT_LINES = 60
 
 
 def describe_page(url: str, content: str, link_pattern: str) -> list[str]:
@@ -22,6 +23,10 @@ def describe_page(url: str, content: str, link_pattern: str) -> list[str]:
     if items:
         lines.append(f"- Feed hợp lệ: {len(items)} mục")
         lines += [f"  - {item.title} → {item.link}" for item in items[:5]]
+        return lines
+    if "<" not in content[:500]:
+        lines.append("- Nội dung văn bản:")
+        lines += [f"  {line}" for line in content.splitlines()[:MAX_PLAIN_TEXT_LINES]]
         return lines
     title = TITLE_PATTERN.search(content)
     lines.append(f"- Tiêu đề: {title.group(1).strip() if title else '(không có)'}")
