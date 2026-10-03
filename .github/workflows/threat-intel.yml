@@ -4,10 +4,25 @@ on:
   schedule:
     - cron: "17 23 * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "update: crawl và mở PR; dry-run: chỉ báo cáo; probe: kiểm tra URL nguồn mới"
+        type: choice
+        options: [update, dry-run, probe]
+        default: update
+      urls:
+        description: "Chỉ cho probe: các URL cách nhau bằng dấu cách"
+        required: false
+        default: ""
+      link_pattern:
+        description: "Chỉ cho probe: regex lọc link bài viết"
+        required: false
+        default: "lua-dao|gia-mao|canh-bao|mao-danh"
   pull_request:
     paths:
       - "scripts/threat_intel/**"
       - "scripts/crawl_threat_intel.py"
+      - "scripts/probe_sources.py"
       - "data/threat-intel/sources.json"
       - ".github/workflows/threat-intel.yml"
 
@@ -19,8 +34,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  probe:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'probe'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Probe candidate source URLs
+        env:
+          PROBE_URLS: ${{ inputs.urls }}
+          PROBE_LINK_PATTERN: ${{ inputs.link_pattern }}
+        run: |
+          read -ra urls <<< "$PROBE_URLS"
+          python scripts/probe_sources.py --link-pattern "$PROBE_LINK_PATTERN" "${urls[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+
   dry-run:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'dry-run')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -44,7 +76,7 @@ jobs:
           if-no-files-found: ignore
 
   update:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'update')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

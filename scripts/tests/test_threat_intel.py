@@ -43,6 +43,8 @@ class DomainTests(unittest.TestCase):
         self.assertEqual("xn--vitcombank-n7a.com", normalize_domain("viêtcombank.com"))
         self.assertIsNone(normalize_domain("anh.jpg"))
         self.assertIsNone(normalize_domain("localhost"))
+        self.assertIsNone(normalize_domain("TP.HCM"))
+        self.assertIsNone(normalize_domain("bao-cao.docx"))
 
     def test_extract_domains_finds_defanged_and_plain(self) -> None:
         self.assertEqual(
@@ -53,6 +55,11 @@ class DomainTests(unittest.TestCase):
         warned = extract_warned_domains(["Trang giả mạo vcb-xacminh.com", "Thời tiết hôm nay tại weather.example.com"])
 
         self.assertEqual(["vcb-xacminh.com"], list(warned))
+
+    def test_city_abbreviations_are_not_domains(self) -> None:
+        warned = extract_warned_domains(["Công an TP.HCM phát hiện kho hàng giả mạo nhãn hiệu tại Q.1"])
+
+        self.assertEqual({}, warned)
 
     def test_allowlist_matches_parent_domains(self) -> None:
         allowlist = {"vietcombank.com.vn", "gov.vn"}
@@ -140,6 +147,25 @@ class TemplateTests(unittest.TestCase):
         update = build_update([], [], [result], set(), TODAY)
 
         self.assertEqual(["x.blogspot.com"], [record.domain for record in update.new_domains])
+
+    def test_reporter_language_is_not_a_candidate(self) -> None:
+        self.assertFalse(
+            is_template_candidate(
+                "Để đấu tranh, ngăn chặn đối với loại tội phạm này, cơ quan điều tra tiếp tục xác minh, làm rõ "
+                "tất cả các hành vi vi phạm pháp luật trước đó của các đối tượng để xử lý triệt để"
+            )
+        )
+        self.assertFalse(
+            is_template_candidate("Với thủ đoạn này, nạn nhân được yêu cầu truy cập <URL> và chuyển tiền vào tài khoản")
+        )
+
+    def test_police_impersonation_scam_is_still_a_candidate(self) -> None:
+        self.assertTrue(
+            is_template_candidate(
+                "Cơ quan điều tra thông báo bạn liên quan vụ án rửa tiền, chuyển toàn bộ tiền vào tài khoản "
+                "<ACCOUNT> để xác minh"
+            )
+        )
 
     def test_victim_narration_without_call_to_action_is_not_a_candidate(self) -> None:
         self.assertFalse(is_template_candidate("Tôi rất bất ngờ khi tài khoản mất hết tiền chỉ sau vài phút"))

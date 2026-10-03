@@ -28,6 +28,11 @@ ADVICE_OR_NARRATION_PATTERN = re.compile(
     r"\bcho bi[ếe]t\b|\bk[ểe] l[ạa]i\b|b[ịi] (?:l[ừu]a|chi[ếe]m [đd]o[ạa]t)",
     re.IGNORECASE,
 )
+REPORTER_LANGUAGE_PATTERN = re.compile(
+    r"c[áa]c [đd][ốo]i t[ưu][ợo]ng|[đd][ấa]u tranh|tri[ệe]t [đd][ểe]|b[ịi] (?:can|c[áa]o)|n[ạa]n nh[âa]n|"
+    r"th[ủu] [đd]o[ạa]n|ph[ưu][ơo]ng th[ứu]c|chi[êe]u tr[òo]|[đd][ưu][ờo]ng d[âa]y",
+    re.IGNORECASE,
+)
 VIETNAMESE_LETTER_PATTERN = re.compile(r"[ăâđêôơưàảãạáằẳẵặắầẩẫậấèẻẽẹéềểễệếìỉĩịíòỏõọóồổỗộốờởỡợớùủũụúừửữựứỳỷỹỵý]", re.I)
 
 
@@ -46,6 +51,7 @@ def is_template_candidate(template: str) -> bool:
         and SCAM_SIGNAL_PATTERN.search(template) is not None
         and CALL_TO_ACTION_PATTERN.search(template) is not None
         and ADVICE_OR_NARRATION_PATTERN.search(template) is None
+        and REPORTER_LANGUAGE_PATTERN.search(template) is None
         and VIETNAMESE_LETTER_PATTERN.search(template) is not None
     )
 
