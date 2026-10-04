@@ -283,10 +283,12 @@ Thiết lập GitHub một lần: Settings → Actions → General → bật *Al
 |---|---|
 | `/de-xuat` | `automation-ideator` + `qol-advisor` chạy song song → danh sách gộp → bạn trả lời "làm A1, Q3" → triển khai → `/polish` |
 | `/polish [file]` | `code-polisher` → `convention-reviewer` → sửa mục "Phải sửa" (tối đa 2 vòng) → test → hỏi commit |
+| `/tinh-nang <mô tả>` | Kế hoạch ngắn → code + test → `test-writer` nếu đụng Core → `/polish` → kiểm tra đầy đủ → commit |
+| `/du-lieu` | `training-data-labeler` gợi ý nhãn → (synthetic khi bạn yêu cầu) → bạn duyệt → `dataset-auditor` → commit |
 
-Không agent nào commit, push hay merge; bạn luôn là người quyết.
+Quy trình đầy đủ (luồng, nhịp định kỳ, ai quyết gì): [`docs/quy-trinh-agents.md`](docs/quy-trinh-agents.md). Không agent nào merge; bạn luôn là người quyết.
 
-Hook `PreToolUse` trong `.claude/settings.json` (script `.claude/hooks/block_sensitive_paths.py`) chặn mọi công cụ của Claude Code đọc, ghi hay chạy lệnh có đường dẫn tới thư mục dữ liệu gốc hoặc file `.env` (cho phép `.env.example`). Lệnh `anonymize.py`, `export_reports.py` trên dữ liệu gốc bạn tự chạy trong terminal. Tắt tạm bằng menu `/hooks`.
+Hook `PreToolUse` trong `.claude/settings.json` (script `.claude/hooks/block_sensitive_paths.py`) chặn công cụ của Claude Code đọc, ghi hay chạy lệnh có đường dẫn viết liền tới thư mục dữ liệu gốc hoặc file `.env` (cho phép `.env.example`). Hook so khớp chuỗi nên không bắt được cách viết vòng (ví dụ `cd` vào thư mục cha rồi đọc tiếp); đó là lưới an toàn, không thay cho quy tắc 4 của CLAUDE.md. Lệnh `anonymize.py`, `export_reports.py` trên dữ liệu gốc bạn tự chạy trong terminal. Tắt tạm bằng menu `/hooks`.
 
 ## Database
 

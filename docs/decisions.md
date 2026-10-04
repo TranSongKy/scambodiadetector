@@ -164,3 +164,10 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Synthetic:** agent `synthetic-message-writer` chỉ chạy khi người dùng yêu cầu rõ, gắn `source = synthetic`, vẫn qua người duyệt; trần 20% và cấm vào tập test giữ nguyên (`validate_dataset.py`, `split_dataset.py`).
 - **CI khi đang gom dữ liệu:** `validate_dataset.py --collecting` vẫn chặn lỗi từng dòng (PII, enum, trùng) nhưng chỉ cảnh báo phân bố nhãn; kiểm tra đầy đủ chạy trước khi train (notebook).
 - **Đánh đổi:** Tin trích trong báo chủ yếu là `scam`; `normal` và `spam` phụ thuộc diễn đàn, nhập tay và synthetic nên sẽ thiếu trong thời gian đầu. Parser diễn đàn dựa vào lớp HTML (`bbWrapper` của XenForo), đổi giao diện thì cần sửa `content_class`.
+
+## 022. Quy trình làm việc với agent
+
+- **Bối cảnh:** Dự án có 10 agent và nhiều workflow; không có thứ tự chung thì dễ bỏ sót review, test hoặc để agent tự quyết việc của người dùng.
+- **Lựa chọn:** `docs/quy-trinh-agents.md` quy định luồng cho từng loại việc (tính năng, cải tiến định kỳ, hiệu năng, danh sách chặn, dữ liệu huấn luyện), nhịp định kỳ và ranh giới quyết định. CLAUDE.md quy tắc 8 bắt buộc theo tài liệu này.
+- **Skill điều phối:** Agent con không gọi được agent khác, nên mỗi chuỗi là một skill do phiên chính chạy: `/tinh-nang`, `/polish`, `/de-xuat`, `/du-lieu`.
+- **Ranh giới:** Agent đề xuất, sửa code trong phạm vi, gợi ý nhãn; người dùng chọn đề xuất, duyệt dữ liệu, merge PR. Vòng sửa sau review tối đa 2 lần. Hook `PreToolUse` là lưới an toàn cho quy tắc 4, không thay thế quy tắc.

@@ -19,6 +19,7 @@ Hệ thống phát hiện tin nhắn lừa đảo tiếng Việt.
 5. Mọi thay đổi ở `ScamDetector.Core` phải có unit test đi kèm.
 6. Không thêm package NuGet/pip mới khi chưa giải thích lý do.
 7. Tài liệu viết bằng tiếng Việt; tên trong code viết bằng tiếng Anh.
+8. Làm việc theo `docs/quy-trinh-agents.md`: thay đổi code đi qua `/tinh-nang` (hoặc ít nhất `/polish` trước khi commit), cải tiến qua `/de-xuat`, dữ liệu huấn luyện qua `/du-lieu`. Người dùng là người merge và duyệt dữ liệu.
 
 ## Lệnh thường dùng
 
