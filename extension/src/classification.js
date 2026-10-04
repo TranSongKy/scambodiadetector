@@ -8,7 +8,12 @@ import {
 } from "./constants.js";
 import { ERROR_MESSAGES, REASON_DESCRIPTIONS, SCAM_ADVICE, VERDICTS } from "./messages.js";
 
+const HTTP_TOO_MANY_REQUESTS = 429;
 const HTTP_SERVICE_UNAVAILABLE = 503;
+const STATUS_MESSAGES = Object.freeze({
+  [HTTP_TOO_MANY_REQUESTS]: ERROR_MESSAGES.rateLimited,
+  [HTTP_SERVICE_UNAVAILABLE]: ERROR_MESSAGES.modelUnavailable,
+});
 const PROBLEM_CODE_MESSAGES = Object.freeze({
   "classification.empty_text": ERROR_MESSAGES.emptyText,
   "classification.text_too_long": ERROR_MESSAGES.textTooLong,
@@ -55,8 +60,8 @@ export function formatResult(result) {
 }
 
 export async function problemMessage(response) {
-  if (response.status === HTTP_SERVICE_UNAVAILABLE) {
-    return ERROR_MESSAGES.modelUnavailable;
+  if (response.status in STATUS_MESSAGES) {
+    return STATUS_MESSAGES[response.status];
   }
   try {
     const problem = await response.json();

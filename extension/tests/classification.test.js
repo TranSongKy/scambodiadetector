@@ -94,11 +94,12 @@ test("classify posts JSON and formats the response", async () => {
   assert.equal(formatted.verdict, VERDICTS.spam);
 });
 
-test("classify maps problem codes, 503 and network errors to Vietnamese messages", async () => {
+test("classify maps problem codes, 429, 503 and network errors to Vietnamese messages", async () => {
   const cases = [
     [async () => jsonResponse(400, { status: 400, code: "classification.text_too_long" }), ERROR_MESSAGES.textTooLong],
     [async () => jsonResponse(400, { status: 400, code: "classification.empty_text" }), ERROR_MESSAGES.emptyText],
     [async () => jsonResponse(503, { status: 503 }), ERROR_MESSAGES.modelUnavailable],
+    [async () => new Response("Too Many Requests", { status: 429 }), ERROR_MESSAGES.rateLimited],
     [async () => new Response("oops", { status: 500 }), ERROR_MESSAGES.unexpected],
     [async () => { throw new TypeError("Failed to fetch"); }, ERROR_MESSAGES.network],
   ];
@@ -124,6 +125,13 @@ test("report posts text, label and extension channel and returns the id", async 
   assert.equal(captured.url, "http://localhost:8080/api/v1/reports");
   assert.deepEqual(captured.body, { text: "Goi 0901234567", label: "scam", channel: "extension" });
   assert.equal(id, "0199a0c0-0000-7000-8000-000000000001");
+});
+
+test("report maps 429 to the rate limit message", async () => {
+  await assert.rejects(report(API, "x", "scam", async () => new Response("", { status: 429 })), (error) => {
+    assert.equal(error.message, ERROR_MESSAGES.rateLimited);
+    return true;
+  });
 });
 
 test("report maps 503 to the maintenance message", async () => {

@@ -1,3 +1,4 @@
+import argparse
 import csv
 import re
 import sys
@@ -199,19 +200,31 @@ def print_summary(dataset_path: Path) -> None:
         print(f"  {label}: {count} ({count / len(rows):.1%})")
 
 
-COLLECTING_FLAG = "--collecting"
+DEFAULT_DATASET_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "dataset.csv"
+EXIT_USAGE_ERROR = 2
 
 
-def main() -> int:
-    arguments = sys.argv[1:]
-    collecting = COLLECTING_FLAG in arguments
-    paths = [argument for argument in arguments if argument != COLLECTING_FLAG]
-    if len(paths) != 1:
-        print(f"Cách dùng: python scripts/validate_dataset.py [{COLLECTING_FLAG}] <đường dẫn dataset.csv>")
-        return 2
+def parse_arguments(arguments: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Kiểm tra dataset.csv theo docs/data-schema.md.")
+    parser.add_argument(
+        "dataset", type=Path, nargs="?", default=DEFAULT_DATASET_PATH, help="Mặc định: data/processed/dataset.csv"
+    )
+    parser.add_argument(
+        "--collecting",
+        action="store_true",
+        help="Đang gom dữ liệu: chỉ cảnh báo phân bố nhãn, vẫn báo lỗi từng dòng",
+    )
+    return parser.parse_args(arguments)
 
-    dataset_path = Path(paths[0])
-    errors = validate_dataset(dataset_path, enforce_distribution=not collecting)
+
+def main(arguments: list[str]) -> int:
+    options = parse_arguments(arguments)
+    dataset_path: Path = options.dataset
+    if not dataset_path.is_file():
+        print(f"Lỗi: không tìm thấy {dataset_path}. Dataset mặc định ở data/processed/dataset.csv")
+        return EXIT_USAGE_ERROR
+
+    errors = validate_dataset(dataset_path, enforce_distribution=not options.collecting)
 
     if errors:
         print(f"Phát hiện {len(errors)} lỗi:")
@@ -219,9 +232,9 @@ def main() -> int:
             print(f"  - {error}")
         return 1
 
-    print("Dataset hợp lệ." + (" (đang thu thập: chưa kiểm tra phân bố nhãn)" if collecting else ""))
+    print("Dataset hợp lệ." + (" (đang thu thập: chưa kiểm tra phân bố nhãn)" if options.collecting else ""))
     print_summary(dataset_path)
-    if collecting:
+    if options.collecting:
         rows, _ = read_dataset(dataset_path)
         for warning in validate_distribution(complete(rows)):
             print(f"  Cảnh báo trước khi train: {warning}")
@@ -229,4 +242,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

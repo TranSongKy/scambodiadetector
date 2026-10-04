@@ -12,7 +12,7 @@ public sealed class BotReplyBuilder(IMessageClassifier classifier)
     {
         var content = message.Content;
         if (content is null)
-            return null;
+            return message.Chat.IsPrivate ? new BotReply(BotReplies.TextOnly, OfferReport: false) : null;
         if (IsCommand(content, BotCommands.Start) || IsCommand(content, BotCommands.Help))
             return new BotReply(BotReplies.Welcome, OfferReport: false);
 

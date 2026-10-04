@@ -121,6 +121,8 @@ API cần 3 file model trong `models/` (đường dẫn cấu hình ở `src/Sca
 dotnet run --project src/ScamDetector.Api
 ```
 
+API nghe ở `http://localhost:8080`, cùng cổng với Docker và với địa chỉ mặc định của extension, nên nạp extension là dùng được ngay.
+
 Khi thiếu file model, API vẫn khởi động: `/health` trả `503 Unhealthy` và endpoint phân loại trả `503` dạng ProblemDetails.
 
 Muốn chạy thử ngay mà chưa có model thật, dùng model fixture của test (chỉ để kiểm tra luồng, không phân loại có nghĩa):
@@ -138,7 +140,7 @@ dotnet run --project src/ScamDetector.Api
 ### `POST /api/v1/classifications`
 
 ```bash
-curl -X POST http://localhost:5234/api/v1/classifications \
+curl -X POST http://localhost:8080/api/v1/classifications \
   -H 'content-type: application/json' \
   -d '{"text":"Tai khoan cua quy khach bi khoa, xac minh tai bit.ly/abc"}'
 ```
@@ -283,6 +285,8 @@ Thiết lập GitHub một lần: Settings → Actions → General → bật *Al
 | `/polish [file]` | `code-polisher` → `convention-reviewer` → sửa mục "Phải sửa" (tối đa 2 vòng) → test → hỏi commit |
 
 Không agent nào commit, push hay merge; bạn luôn là người quyết.
+
+Hook `PreToolUse` trong `.claude/settings.json` (script `.claude/hooks/block_sensitive_paths.py`) chặn mọi công cụ của Claude Code đọc, ghi hay chạy lệnh có đường dẫn tới thư mục dữ liệu gốc hoặc file `.env` (cho phép `.env.example`). Lệnh `anonymize.py`, `export_reports.py` trên dữ liệu gốc bạn tự chạy trong terminal. Tắt tạm bằng menu `/hooks`.
 
 ## Database
 

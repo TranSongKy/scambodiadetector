@@ -25,6 +25,7 @@ export const ERROR_MESSAGES = Object.freeze({
   emptyText: "Hãy dán nội dung tin nhắn cần kiểm tra.",
   textTooLong: `Tin nhắn quá dài (tối đa ${MAX_MESSAGE_LENGTH} ký tự).`,
   modelUnavailable: "Hệ thống đang bảo trì, bạn thử lại sau nhé.",
+  rateLimited: "Bạn kiểm tra hơi nhiều trong thời gian ngắn. Vui lòng đợi khoảng 1 phút rồi thử lại.",
   network: "Không kết nối được máy chủ. Kiểm tra địa chỉ API trong phần Cài đặt.",
   unexpected: "Có lỗi xảy ra, bạn thử lại sau nhé.",
   invalidApiUrl: "Địa chỉ API phải dùng https:// (chỉ cho phép http:// với localhost).",
