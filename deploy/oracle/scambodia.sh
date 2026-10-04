@@ -120,15 +120,23 @@ install_update_cron() {
 }
 
 print_summary() {
-    local domain
+    local domain bot_status model_status
     domain="$(env_value DOMAIN)"
+    bot_status="chưa bật (điền TELEGRAM_BOT_TOKEN vào deploy/oracle/.env rồi chạy lại install)"
+    if [[ -n "$(env_value TELEGRAM_BOT_TOKEN)" ]]; then
+        bot_status="đang chạy"
+    fi
+    model_status="chưa có, API chỉ dùng danh sách chặn và văn mẫu (xem docs/deploy-oracle.md)"
+    if [[ -f "$REPO_DIR/models/scam-detector.onnx" ]]; then
+        model_status="đã có"
+    fi
     cat <<SUMMARY
 
 ==> Xong. Địa chỉ API: https://$domain
     Kiểm tra:   curl -s https://$domain/health
     Extension:  Cài đặt → Địa chỉ API → https://$domain
-    Bot Telegram: $([[ -n "$(env_value TELEGRAM_BOT_TOKEN)" ]] && echo "đang chạy" || echo "chưa bật (điền TELEGRAM_BOT_TOKEN vào deploy/oracle/.env rồi chạy lại install)")
-    Model: $([[ -f "$REPO_DIR/models/scam-detector.onnx" ]] && echo "đã có" || echo "chưa có, API chỉ dùng danh sách chặn và văn mẫu (xem docs/deploy-oracle.md)")
+    Bot Telegram: $bot_status
+    Model: $model_status
 SUMMARY
 }
 
@@ -176,7 +184,9 @@ command_status() {
     compose ps
     local domain
     domain="$(env_value DOMAIN)"
-    [[ -n "$domain" ]] && curl -s -o /dev/null -w "https://$domain/health → HTTP %{http_code}\n" "https://$domain/health" || true
+    if [[ -n "$domain" ]]; then
+        curl -s -o /dev/null -w "https://$domain/health → HTTP %{http_code}\n" "https://$domain/health" || true
+    fi
 }
 
 command_logs() {
