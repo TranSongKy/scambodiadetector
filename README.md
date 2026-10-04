@@ -260,6 +260,30 @@ Cấu hình (`appsettings.json`, biến môi trường `ThreatIntel__*`): `DataD
 
 Thiết lập GitHub một lần: Settings → Actions → General → bật *Allow GitHub Actions to create and approve pull requests*. PR tạo bằng `GITHUB_TOKEN` không kích hoạt CI; muốn CI chạy trên PR cập nhật, tạo fine-grained token (quyền Contents và Pull requests: write) và lưu vào secret `THREAT_INTEL_TOKEN`. Với PR sửa crawler hoặc `sources.json`, workflow chạy thử toàn bộ nguồn và đưa báo cáo vào Job summary để kiểm tra URL và parser còn đúng. Chạy tay workflow (tab Actions → Threat intel → Run workflow) có ba chế độ: `update` (crawl và mở PR), `dry-run` (chỉ báo cáo), `probe` (kiểm tra danh sách URL ứng viên, liệt kê link feed và link bài viết; dùng khi thêm hoặc sửa nguồn vì nhiều trang Việt Nam chỉ truy cập được từ runner GitHub).
 
+## Agent và skill trong Claude Code
+
+Định nghĩa trong `.claude/agents/` và `.claude/skills/`. Agent con không gọi được agent khác, nên chuỗi nhiều bước do skill điều phối.
+
+| Agent | Việc | Sửa file? |
+|---|---|---|
+| `automation-ideator` | Đề xuất tự động hóa mới (mã A1…) để bạn duyệt | Không |
+| `qol-advisor` | Đề xuất cải thiện quality of life cho người dùng và dev (mã Q1…) | Không |
+| `code-polisher` | Đánh bóng code, giữ nguyên hành vi, chạy test | Có |
+| `performance-optimizer` | Đo, tối ưu điểm nóng, chỉ giữ thay đổi nhanh hơn ≥ 10% và không đổi kết quả | Có |
+| `convention-reviewer` | Review diff theo `docs/conventions.md` | Không |
+| `test-writer` | Viết test xUnit cho Core | Có |
+| `dataset-auditor` | Kiểm tra chất lượng `dataset.csv` | Không |
+| `threat-intel-reviewer` | Duyệt PR cập nhật danh sách chặn | Chỉ loại mục |
+| `training-data-labeler` | Gợi ý nhãn cho ứng viên dữ liệu huấn luyện | Chỉ ghi gợi ý |
+| `synthetic-message-writer` | Sinh tin synthetic khi bạn yêu cầu | Chỉ thêm ứng viên |
+
+| Skill | Luồng |
+|---|---|
+| `/de-xuat` | `automation-ideator` + `qol-advisor` chạy song song → danh sách gộp → bạn trả lời "làm A1, Q3" → triển khai → `/polish` |
+| `/polish [file]` | `code-polisher` → `convention-reviewer` → sửa mục "Phải sửa" (tối đa 2 vòng) → test → hỏi commit |
+
+Không agent nào commit, push hay merge; bạn luôn là người quyết.
+
 ## Database
 
 SQL Server qua EF Core, bảng `MessageReports`. Cấu hình bằng `ConnectionStrings:ScamDetector`; để trống thì API vẫn chạy, chỉ `/api/v1/reports` trả 503.
