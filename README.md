@@ -60,6 +60,41 @@ Báo cáo người dùng từ API/bot/extension: `scripts/export_reports.py` (xe
 
 `anonymize.py` không in nội dung tin nhắn, chỉ in id và số lượng. Tập test trong `splits/test.csv` cố định sau lần chia đầu.
 
+## Thu thập dữ liệu huấn luyện tự động
+
+Chưa có tin nhắn thật thì dùng quy trình bán tự động (quyết định 021). Máy thu thập và gợi ý nhãn, **người duyệt từng mẫu** trước khi vào `dataset.csv`.
+
+```
+crawler (hằng tuần, GitHub Actions) ──► data/training-candidates/candidates.csv   (đã che PII, chưa có nhãn)
+agent training-data-labeler        ──► gợi ý nhãn + lý do vào candidates.csv
+agent synthetic-message-writer     ──► (khi bạn yêu cầu) tin normal/spam tự sinh, source=synthetic
+python scripts/review_candidates.py ──► bạn duyệt → dataset.csv (annotator = bạn)
+```
+
+Nguồn và luật:
+
+| Nguồn | Lấy gì | Ghi chú |
+|---|---|---|
+| Báo chí, Bộ Công an, tinnhiemmang.vn | Tin nhắn lừa đảo được trích nguyên văn trong bài (trong dấu ngoặc kép) | Thường là `scam` |
+| Diễn đàn otofun | Bài viết trong chủ đề có từ khóa lừa đảo, tin nhắn, quảng cáo | Agent loại bài thảo luận và nội dung thù địch |
+| Bộ dữ liệu công khai | Khai báo trong `sources.json` loại `csv_dataset`, **bắt buộc ghi giấy phép** | Chưa bật bộ nào, xem quyết định 021 |
+| Nhập tay | `data/training-candidates/manual_messages.csv` (`text,label,channel,source_url,note`) | Tin bạn hoặc người quen nhận được; tin từ X/Reddit/Facebook chỉ vào bằng cách này |
+| Tự sinh | Agent `synthetic-message-writer`, chỉ khi bạn yêu cầu | ≤ 20% dataset, không vào tập test |
+
+- Trước khi lấy dữ liệu từ một trang, crawler đọc `robots.txt`; trang khai báo `Content-Signal: ai-train=no` hoặc chặn bot huấn luyện AI (GPTBot, ClaudeBot, CCBot…) bị bỏ qua. Vì vậy voz.vn và tinhte.vn không được dùng.
+- Mọi tin được che PII ngay khi lấy (`<PHONE>`, `<URL>`…); tin có thể chứa tên người bị bỏ luôn, không lưu.
+- `reviewed.csv` chỉ lưu mã băm của tin đã duyệt để không thu thập lại.
+
+```bash
+python scripts/collect_training_candidates.py --dry-run          # chạy thử (cần mạng tới các trang Việt Nam)
+# trong Claude Code: "dùng agent training-data-labeler gán nhãn ứng viên"
+# (tuỳ chọn) "dùng agent synthetic-message-writer sinh 100 tin normal và 100 tin spam"
+python scripts/review_candidates.py --annotator ky                # Enter = đồng ý, s/p/n = đổi nhãn, x = loại, q = lưu và thoát
+python scripts/validate_dataset.py data/processed/dataset.csv     # kiểm tra đủ, kể cả cân bằng nhãn, trước khi train
+```
+
+Workflow `training-data.yml` chạy mỗi thứ Hai (7:41 giờ Việt Nam): thu thập tối đa 300 ứng viên rồi mở PR `training-data/candidates`. Merge PR đó chỉ thêm ứng viên vào hàng chờ, chưa thêm gì vào dataset. Khi đang gom dữ liệu, CI chạy `validate_dataset.py --collecting`: lỗi từng dòng vẫn làm CI đỏ, còn phân bố nhãn chưa cân bằng chỉ là cảnh báo.
+
 ## Huấn luyện model
 
 Mở `notebooks/train_phobert_colab.ipynb` trên Google Colab (GPU), hoặc chạy trực tiếp trên máy có GPU:
@@ -86,6 +121,8 @@ API cần 3 file model trong `models/` (đường dẫn cấu hình ở `src/Sca
 dotnet run --project src/ScamDetector.Api
 ```
 
+API nghe ở `http://localhost:8080`, cùng cổng với Docker và với địa chỉ mặc định của extension, nên nạp extension là dùng được ngay.
+
 Khi thiếu file model, API vẫn khởi động: `/health` trả `503 Unhealthy` và endpoint phân loại trả `503` dạng ProblemDetails.
 
 Muốn chạy thử ngay mà chưa có model thật, dùng model fixture của test (chỉ để kiểm tra luồng, không phân loại có nghĩa):
@@ -103,7 +140,7 @@ dotnet run --project src/ScamDetector.Api
 ### `POST /api/v1/classifications`
 
 ```bash
-curl -X POST http://localhost:5234/api/v1/classifications \
+curl -X POST http://localhost:8080/api/v1/classifications \
   -H 'content-type: application/json' \
   -d '{"text":"Tai khoan cua quy khach bi khoa, xac minh tai bit.ly/abc"}'
 ```
@@ -225,6 +262,34 @@ Cấu hình (`appsettings.json`, biến môi trường `ThreatIntel__*`): `DataD
 
 Thiết lập GitHub một lần: Settings → Actions → General → bật *Allow GitHub Actions to create and approve pull requests*. PR tạo bằng `GITHUB_TOKEN` không kích hoạt CI; muốn CI chạy trên PR cập nhật, tạo fine-grained token (quyền Contents và Pull requests: write) và lưu vào secret `THREAT_INTEL_TOKEN`. Với PR sửa crawler hoặc `sources.json`, workflow chạy thử toàn bộ nguồn và đưa báo cáo vào Job summary để kiểm tra URL và parser còn đúng. Chạy tay workflow (tab Actions → Threat intel → Run workflow) có ba chế độ: `update` (crawl và mở PR), `dry-run` (chỉ báo cáo), `probe` (kiểm tra danh sách URL ứng viên, liệt kê link feed và link bài viết; dùng khi thêm hoặc sửa nguồn vì nhiều trang Việt Nam chỉ truy cập được từ runner GitHub).
 
+## Agent và skill trong Claude Code
+
+Định nghĩa trong `.claude/agents/` và `.claude/skills/`. Agent con không gọi được agent khác, nên chuỗi nhiều bước do skill điều phối.
+
+| Agent | Việc | Sửa file? |
+|---|---|---|
+| `automation-ideator` | Đề xuất tự động hóa mới (mã A1…) để bạn duyệt | Không |
+| `qol-advisor` | Đề xuất cải thiện quality of life cho người dùng và dev (mã Q1…) | Không |
+| `code-polisher` | Đánh bóng code, giữ nguyên hành vi, chạy test | Có |
+| `performance-optimizer` | Đo, tối ưu điểm nóng, chỉ giữ thay đổi nhanh hơn ≥ 10% và không đổi kết quả | Có |
+| `convention-reviewer` | Review diff theo `docs/conventions.md` | Không |
+| `test-writer` | Viết test xUnit cho Core | Có |
+| `dataset-auditor` | Kiểm tra chất lượng `dataset.csv` | Không |
+| `threat-intel-reviewer` | Duyệt PR cập nhật danh sách chặn | Chỉ loại mục |
+| `training-data-labeler` | Gợi ý nhãn cho ứng viên dữ liệu huấn luyện | Chỉ ghi gợi ý |
+| `synthetic-message-writer` | Sinh tin synthetic khi bạn yêu cầu | Chỉ thêm ứng viên |
+
+| Skill | Luồng |
+|---|---|
+| `/de-xuat` | `automation-ideator` + `qol-advisor` chạy song song → danh sách gộp → bạn trả lời "làm A1, Q3" → triển khai → `/polish` |
+| `/polish [file]` | `code-polisher` → `convention-reviewer` → sửa mục "Phải sửa" (tối đa 2 vòng) → test → hỏi commit |
+| `/tinh-nang <mô tả>` | Kế hoạch ngắn → code + test → `test-writer` nếu đụng Core → `/polish` → kiểm tra đầy đủ → commit |
+| `/du-lieu` | `training-data-labeler` gợi ý nhãn → (synthetic khi bạn yêu cầu) → bạn duyệt → `dataset-auditor` → commit |
+
+Quy trình đầy đủ (luồng, nhịp định kỳ, ai quyết gì): [`docs/quy-trinh-agents.md`](docs/quy-trinh-agents.md). Không agent nào merge; bạn luôn là người quyết.
+
+Hook `PreToolUse` trong `.claude/settings.json` (script `.claude/hooks/block_sensitive_paths.py`) chặn công cụ của Claude Code đọc, ghi hay chạy lệnh có đường dẫn viết liền tới thư mục dữ liệu gốc hoặc file `.env` (cho phép `.env.example`). Hook so khớp chuỗi nên không bắt được cách viết vòng (ví dụ `cd` vào thư mục cha rồi đọc tiếp); đó là lưới an toàn, không thay cho quy tắc 4 của CLAUDE.md. Lệnh `anonymize.py`, `export_reports.py` trên dữ liệu gốc bạn tự chạy trong terminal. Tắt tạm bằng menu `/hooks`.
+
 ## Database
 
 SQL Server qua EF Core, bảng `MessageReports`. Cấu hình bằng `ConnectionStrings:ScamDetector`; để trống thì API vẫn chạy, chỉ `/api/v1/reports` trả 503.
@@ -238,6 +303,8 @@ dotnet ef database update --project src/ScamDetector.Infrastructure --connection
 Đặt `Database:ApplyMigrationsOnStartup=true` để API tự chạy migration khi khởi động (compose đã bật). Test `MigrationTests` báo lỗi nếu đổi model mà quên tạo migration.
 
 ## Deploy bằng Docker
+
+**Deploy miễn phí lên Internet:** làm theo [`docs/deploy-oracle.md`](docs/deploy-oracle.md) (Oracle Cloud Always Free, HTTPS tự động qua sslip.io + Caddy, tự cập nhật dữ liệu mỗi 15 phút). Cài bằng một lệnh: `sudo deploy/oracle/scambodia.sh install`.
 
 ```bash
 docker build -t scam-detector-api .

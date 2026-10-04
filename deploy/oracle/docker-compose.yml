@@ -1,0 +1,60 @@
+name: scambodia
+
+x-detector-common: &detector-common
+  restart: unless-stopped
+  volumes:
+    - ../../models:/models:ro
+    - ../../data/threat-intel:/threat-intel:ro
+
+services:
+  api:
+    <<: *detector-common
+    build:
+      context: ../..
+      args:
+        PROJECT: ScamDetector.Api
+    image: scambodia-api:local
+    expose:
+      - "8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      RateLimiting__TrustForwardedHeaders: "true"
+      OnnxModel__IntraOpNumThreads: "2"
+      ConnectionStrings__ScamDetector: ${SCAMDETECTOR_CONNECTION_STRING:-}
+      Database__ApplyMigrationsOnStartup: ${APPLY_MIGRATIONS:-false}
+      ReportAdmin__ApiKey: ${REPORT_ADMIN_API_KEY:-}
+
+  bot:
+    <<: *detector-common
+    profiles: ["bot"]
+    build:
+      context: ../..
+      args:
+        PROJECT: ScamDetector.Bot
+    image: scambodia-bot:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      OnnxModel__IntraOpNumThreads: "1"
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      ConnectionStrings__ScamDetector: ${SCAMDETECTOR_CONNECTION_STRING:-}
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Chạy deploy/oracle/scambodia.sh install để tạo tên miền}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy-data:
+  caddy-config:

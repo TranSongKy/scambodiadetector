@@ -9,7 +9,7 @@ namespace ScamDetector.Bot.Tests.Telegram;
 public sealed class TelegramApiClientTests
 {
     private const string BaseAddress = "https://api.telegram.org/botfake-token/";
-    private const string UpdatesJson = """{"ok":true,"result":[{"update_id":5,"message":{"message_id":7,"chat":{"id":42},"text":"hi"}}]}""";
+    private const string UpdatesJson = """{"ok":true,"result":[{"update_id":5,"message":{"message_id":7,"chat":{"id":42,"type":"private"},"text":"hi"}}]}""";
 
     private static TelegramApiClient CreateClient(FakeHttpMessageHandler handler, int pollingTimeoutSeconds = 30)
     {
@@ -29,6 +29,7 @@ public sealed class TelegramApiClientTests
         Assert.Equal(5, update.UpdateId);
         Assert.Equal(7, update.Message!.MessageId);
         Assert.Equal(42, update.Message.Chat.Id);
+        Assert.True(update.Message.Chat.IsPrivate);
         Assert.Equal("hi", update.Message.Text);
         Assert.Null(update.Message.Caption);
     }

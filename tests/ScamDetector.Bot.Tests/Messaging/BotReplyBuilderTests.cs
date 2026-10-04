@@ -36,7 +36,7 @@ public sealed class BotReplyBuilderTests
     }
 
     [Fact]
-    public async Task BuildReplyAsync_NoTextAndNoCaption_ReturnsNull()
+    public async Task BuildReplyAsync_NoTextAndNoCaptionInGroup_ReturnsNull()
     {
         var classifier = SuccessfulClassifier();
         var builder = new BotReplyBuilder(classifier);
@@ -44,6 +44,20 @@ public sealed class BotReplyBuilderTests
         var reply = await builder.BuildReplyAsync(MessageWith(null), CancellationToken.None);
 
         Assert.Null(reply);
+        Assert.Empty(classifier.ReceivedTexts);
+    }
+
+    [Fact]
+    public async Task BuildReplyAsync_NoTextAndNoCaptionInPrivateChat_ReturnsTextOnlyHint()
+    {
+        var classifier = SuccessfulClassifier();
+        var builder = new BotReplyBuilder(classifier);
+        var photoOnly = new TelegramMessage(7, new TelegramChat(42, "private"), Text: null, Caption: null);
+
+        var reply = await builder.BuildReplyAsync(photoOnly, CancellationToken.None);
+
+        Assert.Equal(BotReplies.TextOnly, reply?.Text);
+        Assert.False(reply?.OfferReport);
         Assert.Empty(classifier.ReceivedTexts);
     }
 

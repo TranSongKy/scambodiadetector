@@ -1,8 +1,10 @@
+import contextlib
+import io
 import tempfile
 import unittest
 from pathlib import Path
 
-from validate_dataset import find_pii, has_url, validate_dataset
+from validate_dataset import find_pii, has_url, main, validate_dataset
 
 from scripts.tests.dataset_rows import make_balanced_rows, make_row, write_dataset
 
@@ -94,12 +96,37 @@ class ValidateDatasetTests(unittest.TestCase):
 
         self.assertTrue(any("synthetic" in error for error in validate_dataset(dataset)))
 
+    def test_collecting_mode_skips_distribution_but_keeps_row_checks(self) -> None:
+        rows = [{**row, "source": "synthetic"} for row in make_balanced_rows(per_label=5) if row["label"] == "scam"]
+        dataset = write_dataset(self.root / "dataset.csv", rows)
+        broken = write_dataset(self.root / "broken.csv", [{**rows[0], "label": "lua"}])
+
+        self.assertTrue(validate_dataset(dataset))
+        self.assertEqual([], validate_dataset(dataset, enforce_distribution=False))
+        self.assertTrue(validate_dataset(broken, enforce_distribution=False))
+
     def test_unknown_placeholder_is_reported(self) -> None:
         rows = make_balanced_rows(per_label=5)
         rows[1] = {**rows[1], "text": rows[1]["text"] + " <FOO>"}
         dataset = write_dataset(self.root / "dataset.csv", rows)
 
         self.assertTrue(any("<FOO>" in error for error in validate_dataset(dataset)))
+
+
+class ValidateDatasetCommandLineTests(unittest.TestCase):
+    def test_missing_dataset_returns_usage_error_without_traceback(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = main(["khong-co/dataset.csv"])
+
+        self.assertEqual(2, exit_code)
+        self.assertIn("không tìm thấy", output.getvalue())
+
+    def test_help_exits_cleanly(self) -> None:
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as raised:
+            main(["--help"])
+
+        self.assertEqual(0, raised.exception.code)
 
 
 if __name__ == "__main__":

@@ -149,3 +149,34 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Ràng buộc của agent:** không truy cập mạng và không mở link trong dữ liệu (tránh bị trang lừa đảo tác động hoặc prompt injection), chỉ được loại qua `reject_threat_intel.py` (không thêm, không sửa), chỉ duyệt dòng mới so với `origin/main`, không đọc `data/raw/`, không commit/push/merge. Trường hợp không chắc thì xếp CẦN NGƯỜI XEM, không đoán. Báo cáo cảnh báo nguồn có hơn 30% mục bị loại.
 - **Đã thử:** Bộ 7 tên miền và 5 văn mẫu gồm cả bẫy (gốc `blogspot.com`, trang bán lẻ thật, lời khuyên của công an, lời kể nạn nhân, thông báo OTP hợp lệ): agent xử lý đúng cả 12 mục.
 - **Mục bị loại lưu dấu vân tay:** `rejected_templates.csv` chỉ lưu SHA-256 (12 ký tự hex) của từng cụm 3 từ, không lưu nội dung, vì đoạn bị loại có thể chứa tên thật hay chi tiết riêng tư; vẫn đủ để nhận ra văn mẫu gần giống khi crawl lại.
+
+## 021. Thu thập dữ liệu huấn luyện bán tự động: máy gợi ý, người duyệt
+
+- **Bối cảnh:** Chưa có tin nhắn thật để train. Người dùng muốn agent tự crawl và gán nhãn từ website, diễn đàn, mạng xã hội, bộ dữ liệu công khai, kèm dữ liệu tự sinh và tự đóng góp.
+- **Lựa chọn:** Agent gán nhãn **gợi ý**, người duyệt từng mẫu (`review_candidates.py`, `annotator` là người duyệt). Lý do: nhãn sai trong tập test làm mọi chỉ số vô nghĩa; quy tắc 3 của CLAUDE.md không cho đưa dữ liệu chưa kiểm chứng vào train.
+- **Luồng:** `collect_training_candidates.py` → `candidates.csv` (đã che PII) → agent `training-data-labeler` ghi gợi ý qua `label_candidates.py` (kiểm tra enum, bắt buộc lý do) → người duyệt → `dataset.csv`. Không bước tự động nào ghi vào `dataset.csv`.
+- **Tôn trọng điều khoản và tín hiệu của trang:**
+  - **X và Reddit không crawl:** điều khoản X cấm scraping và cấm dùng nội dung để train model; điều khoản Data API của Reddit cấm dùng nội dung train ML khi chưa được phép. Tin từ đây chỉ vào qua nhập tay khi người dùng là người nhận hoặc được đồng ý.
+  - **robots.txt quyết định:** trang khai báo `Content-Signal: ai-train=no` (voz.vn) hoặc chặn hoàn toàn bot huấn luyện AI (tinhte.vn chặn ClaudeBot, Bytespider) bị bỏ qua tự động (`training_data/policy.py`). Kiểm tra ngày 03/10/2026: báo Tuổi Trẻ, Dân trí, Thanh Niên, VietNamNet, Bộ Công an, tinnhiemmang.vn, otofun, webtretho không hạn chế.
+  - **Bộ dữ liệu công khai** phải ghi giấy phép trong `sources.json` (loader từ chối nếu thiếu). Chưa bật bộ nào: bộ SMS spam tiếng Việt của Viettel/Vinaphone (arXiv 1705.04003) chỉ cho mục đích nghiên cứu, cần người dùng tự xác nhận điều khoản; PhishVN là tên miền, hợp với danh sách chặn hơn là train.
+- **Riêng tư:** che PII ngay khi lấy bằng cùng `masking.py`; tin có thể chứa tên người (`may_contain_name`) bị bỏ ngay, không lưu; `reviewed.csv` chỉ lưu SHA-256 rút gọn của tin đã duyệt để chống thu thập lại.
+- **Nội dung thù địch:** agent bắt buộc `exclude`; người duyệt là lớp cuối.
+- **Synthetic:** agent `synthetic-message-writer` chỉ chạy khi người dùng yêu cầu rõ, gắn `source = synthetic`, vẫn qua người duyệt; trần 20% và cấm vào tập test giữ nguyên (`validate_dataset.py`, `split_dataset.py`).
+- **CI khi đang gom dữ liệu:** `validate_dataset.py --collecting` vẫn chặn lỗi từng dòng (PII, enum, trùng) nhưng chỉ cảnh báo phân bố nhãn; kiểm tra đầy đủ chạy trước khi train (notebook).
+- **Đánh đổi:** Tin trích trong báo chủ yếu là `scam`; `normal` và `spam` phụ thuộc diễn đàn, nhập tay và synthetic nên sẽ thiếu trong thời gian đầu. Parser diễn đàn dựa vào lớp HTML (`bbWrapper` của XenForo), đổi giao diện thì cần sửa `content_class`.
+
+## 022. Quy trình làm việc với agent
+
+- **Bối cảnh:** Dự án có 10 agent và nhiều workflow; không có thứ tự chung thì dễ bỏ sót review, test hoặc để agent tự quyết việc của người dùng.
+- **Lựa chọn:** `docs/quy-trinh-agents.md` quy định luồng cho từng loại việc (tính năng, cải tiến định kỳ, hiệu năng, danh sách chặn, dữ liệu huấn luyện), nhịp định kỳ và ranh giới quyết định. CLAUDE.md quy tắc 8 bắt buộc theo tài liệu này.
+- **Skill điều phối:** Agent con không gọi được agent khác, nên mỗi chuỗi là một skill do phiên chính chạy: `/tinh-nang`, `/polish`, `/de-xuat`, `/du-lieu`.
+- **Ranh giới:** Agent đề xuất, sửa code trong phạm vi, gợi ý nhãn; người dùng chọn đề xuất, duyệt dữ liệu, merge PR. Vòng sửa sau review tối đa 2 lần. Hook `PreToolUse` là lưới an toàn cho quy tắc 4, không thay thế quy tắc.
+
+## 023. Deploy miễn phí: Oracle Cloud Always Free + sslip.io + cron kéo dữ liệu
+
+- **Bối cảnh:** Cần deploy 0 đồng cho API (model PhoBERT ONNX cần 1–2 GB RAM), bot Telegram (long polling, phải chạy liên tục) và HTTPS cho extension.
+- **So sánh (10/2026):** Render, Koyeb free chỉ 512 MB RAM và ngủ khi không có truy cập; Hugging Face Spaces từ 2026 bắt buộc gói trả phí cho Docker Space; Cloud Run phải đổi bot sang webhook. Oracle Always Free còn 2 OCPU ARM, 12 GB RAM chạy liên tục (giảm từ 4/24 vào 15/06/2026).
+- **Lựa chọn:** Một máy ARM Oracle chạy `deploy/oracle/docker-compose.yml` (API, bot, Caddy). Tên miền `scambodia-<IP>.sslip.io` không cần đăng ký; Caddy tự lấy chứng chỉ. Database tuỳ chọn là Azure SQL free offer (SQL Server không có bản ARM).
+- **Tự cập nhật kiểu kéo (pull):** Crawl vẫn trên GitHub Actions; máy chủ chạy `scambodia.sh update` mỗi 15 phút, chỉ build lại khi code thay đổi, dữ liệu thì API tự nạp lại. Không cần lưu khoá SSH của máy chủ trong GitHub.
+- **Kiểm chứng:** CI build và chạy image trên runner ARM (`ubuntu-24.04-arm`) và chạy thử API sau Caddy với HTTPS.
+- **Rủi ro:** Oracle có thể đổi hạn mức hoặc thu hồi máy nhàn rỗi; dự phòng là chạy cùng compose trên máy ở nhà qua Cloudflare Tunnel.

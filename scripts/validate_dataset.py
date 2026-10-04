@@ -1,3 +1,4 @@
+import argparse
 import csv
 import re
 import sys
@@ -156,28 +157,37 @@ def validate_uniqueness(rows: list[dict[str, str]]) -> list[str]:
     return errors
 
 
-def validate_dataset(dataset_path: Path) -> list[str]:
+def read_dataset(dataset_path: Path) -> tuple[list[dict[str, str]], list[str]]:
     with dataset_path.open(encoding="utf-8", newline="") as dataset_file:
         if dataset_file.read(1) == BOM:
-            return ["File có BOM, cần lưu dạng UTF-8 không BOM"]
+            return [], ["File có BOM, cần lưu dạng UTF-8 không BOM"]
         dataset_file.seek(0)
         reader = csv.DictReader(dataset_file)
 
         missing_columns = set(REQUIRED_COLUMNS) - set(reader.fieldnames or [])
         if missing_columns:
-            return [f"Thiếu cột: {', '.join(sorted(missing_columns))}"]
+            return [], [f"Thiếu cột: {', '.join(sorted(missing_columns))}"]
 
         rows = list(reader)
 
     if not rows:
-        return ["Dataset rỗng"]
+        return [], ["Dataset rỗng"]
+    return rows, []
 
-    errors: list[str] = []
+
+def complete(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [row for row in rows if None not in row and None not in row.values()]
+
+
+def validate_dataset(dataset_path: Path, enforce_distribution: bool = True) -> list[str]:
+    rows, errors = read_dataset(dataset_path)
+    if errors:
+        return errors
     for line_number, row in enumerate(rows, start=2):
         errors.extend(validate_row(row, line_number))
-    complete_rows = [row for row in rows if None not in row and None not in row.values()]
-    errors.extend(validate_uniqueness(complete_rows))
-    errors.extend(validate_distribution(complete_rows))
+    errors.extend(validate_uniqueness(complete(rows)))
+    if enforce_distribution:
+        errors.extend(validate_distribution(complete(rows)))
     return errors
 
 
@@ -190,13 +200,31 @@ def print_summary(dataset_path: Path) -> None:
         print(f"  {label}: {count} ({count / len(rows):.1%})")
 
 
-def main() -> int:
-    if len(sys.argv) != 2:
-        print("Cách dùng: python scripts/validate_dataset.py <đường dẫn dataset.csv>")
-        return 2
+DEFAULT_DATASET_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "dataset.csv"
+EXIT_USAGE_ERROR = 2
 
-    dataset_path = Path(sys.argv[1])
-    errors = validate_dataset(dataset_path)
+
+def parse_arguments(arguments: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Kiểm tra dataset.csv theo docs/data-schema.md.")
+    parser.add_argument(
+        "dataset", type=Path, nargs="?", default=DEFAULT_DATASET_PATH, help="Mặc định: data/processed/dataset.csv"
+    )
+    parser.add_argument(
+        "--collecting",
+        action="store_true",
+        help="Đang gom dữ liệu: chỉ cảnh báo phân bố nhãn, vẫn báo lỗi từng dòng",
+    )
+    return parser.parse_args(arguments)
+
+
+def main(arguments: list[str]) -> int:
+    options = parse_arguments(arguments)
+    dataset_path: Path = options.dataset
+    if not dataset_path.is_file():
+        print(f"Lỗi: không tìm thấy {dataset_path}. Dataset mặc định ở data/processed/dataset.csv")
+        return EXIT_USAGE_ERROR
+
+    errors = validate_dataset(dataset_path, enforce_distribution=not options.collecting)
 
     if errors:
         print(f"Phát hiện {len(errors)} lỗi:")
@@ -204,10 +232,14 @@ def main() -> int:
             print(f"  - {error}")
         return 1
 
-    print("Dataset hợp lệ.")
+    print("Dataset hợp lệ." + (" (đang thu thập: chưa kiểm tra phân bố nhãn)" if options.collecting else ""))
     print_summary(dataset_path)
+    if options.collecting:
+        rows, _ = read_dataset(dataset_path)
+        for warning in validate_distribution(complete(rows)):
+            print(f"  Cảnh báo trước khi train: {warning}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

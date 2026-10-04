@@ -18,6 +18,8 @@ public static class BotReplies
     public static readonly string TextTooLong =
         $"Tin nhắn quá dài (tối đa {ClassificationLimits.MaxMessageLength} ký tự). Hãy gửi phần nội dung chính.";
     public const string InvalidText = "Không đọc được nội dung tin nhắn.";
+    public const string TextOnly =
+        "Mình chỉ đọc được chữ. Hãy chép hoặc dán nội dung tin nhắn vào đây, hoặc chuyển tiếp (forward) tin dạng chữ.";
     public const string ModelUnavailable = "Hệ thống đang bảo trì, bạn thử lại sau nhé.";
     public const string ReportScamButton = "Báo: Lừa đảo";
     public const string ReportSpamButton = "Báo: Quảng cáo";
