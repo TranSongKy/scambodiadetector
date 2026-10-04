@@ -171,3 +171,12 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Lựa chọn:** `docs/quy-trinh-agents.md` quy định luồng cho từng loại việc (tính năng, cải tiến định kỳ, hiệu năng, danh sách chặn, dữ liệu huấn luyện), nhịp định kỳ và ranh giới quyết định. CLAUDE.md quy tắc 8 bắt buộc theo tài liệu này.
 - **Skill điều phối:** Agent con không gọi được agent khác, nên mỗi chuỗi là một skill do phiên chính chạy: `/tinh-nang`, `/polish`, `/de-xuat`, `/du-lieu`.
 - **Ranh giới:** Agent đề xuất, sửa code trong phạm vi, gợi ý nhãn; người dùng chọn đề xuất, duyệt dữ liệu, merge PR. Vòng sửa sau review tối đa 2 lần. Hook `PreToolUse` là lưới an toàn cho quy tắc 4, không thay thế quy tắc.
+
+## 023. Deploy miễn phí: Oracle Cloud Always Free + sslip.io + cron kéo dữ liệu
+
+- **Bối cảnh:** Cần deploy 0 đồng cho API (model PhoBERT ONNX cần 1–2 GB RAM), bot Telegram (long polling, phải chạy liên tục) và HTTPS cho extension.
+- **So sánh (10/2026):** Render, Koyeb free chỉ 512 MB RAM và ngủ khi không có truy cập; Hugging Face Spaces từ 2026 bắt buộc gói trả phí cho Docker Space; Cloud Run phải đổi bot sang webhook. Oracle Always Free còn 2 OCPU ARM, 12 GB RAM chạy liên tục (giảm từ 4/24 vào 15/06/2026).
+- **Lựa chọn:** Một máy ARM Oracle chạy `deploy/oracle/docker-compose.yml` (API, bot, Caddy). Tên miền `scambodia-<IP>.sslip.io` không cần đăng ký; Caddy tự lấy chứng chỉ. Database tuỳ chọn là Azure SQL free offer (SQL Server không có bản ARM).
+- **Tự cập nhật kiểu kéo (pull):** Crawl vẫn trên GitHub Actions; máy chủ chạy `scambodia.sh update` mỗi 15 phút, chỉ build lại khi code thay đổi, dữ liệu thì API tự nạp lại. Không cần lưu khoá SSH của máy chủ trong GitHub.
+- **Kiểm chứng:** CI build và chạy image trên runner ARM (`ubuntu-24.04-arm`) và chạy thử API sau Caddy với HTTPS.
+- **Rủi ro:** Oracle có thể đổi hạn mức hoặc thu hồi máy nhàn rỗi; dự phòng là chạy cùng compose trên máy ở nhà qua Cloudflare Tunnel.

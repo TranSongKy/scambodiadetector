@@ -118,11 +118,12 @@ jobs:
           path: scambodia-extension.zip
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: dotnet
     strategy:
       matrix:
         project: [ScamDetector.Api, ScamDetector.Bot]
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -153,3 +154,41 @@ jobs:
           fi
           docker exec app test -s /threat-intel/blocked_domains.csv
           docker exec app test -s /threat-intel/scam_templates.csv
+
+  deploy:
+    runs-on: ubuntu-24.04-arm
+    needs: dotnet
+    defaults:
+      run:
+        working-directory: deploy/oracle
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint deploy script
+        run: shellcheck scambodia.sh
+      - name: Validate compose file
+        run: |
+          DOMAIN=localhost docker compose config --quiet
+          DOMAIN=localhost COMPOSE_PROFILES=bot docker compose config --services | grep -qx bot
+      - name: Run API behind Caddy on ARM64
+        env:
+          DOMAIN: localhost
+        run: |
+          docker compose up -d --build api caddy
+          status=""
+          for attempt in $(seq 1 60); do
+            status=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/health || true)
+            [ "$status" = "503" ] && break
+            sleep 2
+          done
+          docker compose logs api caddy
+          test "$status" = "503"
+          code=$(curl -sk -o /dev/null -w '%{http_code}' -H 'content-type: application/json' \
+            -d '{"text":"xin chao"}' https://localhost/api/v1/classifications)
+          test "$code" = "503"
+          curl -skI https://localhost/health | grep -qi '^strict-transport-security'
+      - name: Stop
+        if: always()
+        env:
+          DOMAIN: localhost
+        run: docker compose down -v
+

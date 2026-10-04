@@ -304,6 +304,8 @@ dotnet ef database update --project src/ScamDetector.Infrastructure --connection
 
 ## Deploy bằng Docker
 
+**Deploy miễn phí lên Internet:** làm theo [`docs/deploy-oracle.md`](docs/deploy-oracle.md) (Oracle Cloud Always Free, HTTPS tự động qua sslip.io + Caddy, tự cập nhật dữ liệu mỗi 15 phút). Cài bằng một lệnh: `sudo deploy/oracle/scambodia.sh install`.
+
 ```bash
 docker build -t scam-detector-api .
 docker run -p 8080:8080 -v "$PWD/models:/models:ro" scam-detector-api
