@@ -99,7 +99,7 @@ def crawl_domain_list(source: Source, fetch: Callable[[str], str], result: Sourc
 
 def crawl_domain_page(source: Source, fetch: Callable[[str], str], result: SourceResult) -> None:
     own_host = normalize_domain(urlsplit(source.url).netloc) or ""
-    evidence = f"Có trong danh sách của {own_host} ({source.name})"
+    evidence = f"Có trong danh sách website lừa đảo của nguồn {source.name}"
     for domain in sorted(extract_domains(extract_visible_text(fetch(source.url)))):
         if not is_allowed(domain, {own_host}):
             result.domains.setdefault(domain, DomainSighting(source.url, evidence))

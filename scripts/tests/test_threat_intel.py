@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from masking import find_maskable_pii
 from threat_intel.crawler import DomainSighting, SourceResult, crawl_source
 from threat_intel.domains import extract_domains, extract_warned_domains, is_allowed, normalize_domain, refang
 from threat_intel.fetcher import FetchError, PoliteFetcher
@@ -237,7 +238,8 @@ class CrawlTests(unittest.TestCase):
         result = crawl_source(Source(name="tnm", kind="domain_page", url=url), fake_fetch(self.pages), self.data_dir)
 
         self.assertEqual({"vcb-xacminh.com", "bidv-hotro.top"}, set(result.domains))
-        self.assertIn("tinnhiemmang.vn", result.domains["vcb-xacminh.com"].evidence)
+        self.assertIn("tnm", result.domains["vcb-xacminh.com"].evidence)
+        self.assertEqual([], find_maskable_pii(result.domains["vcb-xacminh.com"].evidence))
         self.assertEqual(url, result.domains["vcb-xacminh.com"].source_url)
 
     def test_domain_list_source_reads_json_entries(self) -> None:
