@@ -1,15 +1,15 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ScamDetector.Core.Classification;
-using ScamDetector.Infrastructure.Onnx;
 
 namespace ScamDetector.Infrastructure.HealthChecks;
 
 public sealed class ScamModelHealthCheck(IScamModel model) : IHealthCheck
 {
-    private const string ModelMissingDescription = "Model files are missing.";
+    private const string NoModelReadyDescription =
+        "No classification model is ready: PhoBERT files are missing and the LLM is disabled, unreachable or not pulled.";
 
-    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken) =>
-        Task.FromResult(model is UnavailableScamModel
-            ? HealthCheckResult.Unhealthy(ModelMissingDescription)
-            : HealthCheckResult.Healthy());
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken) =>
+        await model.IsReadyAsync(cancellationToken)
+            ? HealthCheckResult.Healthy()
+            : HealthCheckResult.Unhealthy(NoModelReadyDescription);
 }

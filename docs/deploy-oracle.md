@@ -1,13 +1,13 @@
 # Deploy miễn phí trên Oracle Cloud
 
-Kết quả cuối: API chạy ở `https://scambodia-<IP>.sslip.io`, bot Telegram chạy 24/7, dữ liệu lừa đảo tự cập nhật sau mỗi lần bạn merge PR. Chi phí: 0 đồng (quyết định 023).
+Kết quả cuối: API chạy ở `https://scambodia-<IP>.sslip.io` với model AI `qwen2.5:3b` (Ollama) kiểm tra mọi tin, bot Telegram chạy 24/7, dữ liệu lừa đảo tự cập nhật sau mỗi lần bạn merge PR. Chi phí: 0 đồng (quyết định 023).
 
 ```
 GitHub Actions (miễn phí)                     Máy ảo Oracle (Always Free, ARM 2 nhân, 12 GB)
   crawl hằng ngày ─► PR ─► bạn merge ─► main ◄── cron 15 phút: scambodia.sh update
                                                   ├─ chỉ dữ liệu đổi → API tự nạp lại
                                                   └─ code đổi → build lại container
-                                                Caddy (HTTPS tự động) ─► API ─► model + danh sách chặn
+                                                Caddy (HTTPS tự động) ─► API ─► danh sách chặn + PhoBERT hoặc Ollama (LLM)
                                                 Bot Telegram (long polling)
 ```
 
@@ -60,7 +60,7 @@ cd scambodiadetector
 sudo deploy/oracle/scambodia.sh install
 ```
 
-Script sẽ: cài Docker, mở cổng trong Ubuntu, tạo swap 2 GB, tạo file cấu hình `deploy/oracle/.env` (quyền 600) với tên miền `scambodia-<IP-dạng-gạch-ngang>.sslip.io`, build và chạy API + Caddy, đặt lịch tự cập nhật 15 phút một lần. Lần đầu mất khoảng 5–15 phút. Cuối cùng in ra địa chỉ API.
+Script sẽ: cài Docker, mở cổng trong Ubuntu, tạo swap 2 GB, tạo file cấu hình `deploy/oracle/.env` (quyền 600) với tên miền `scambodia-<IP-dạng-gạch-ngang>.sslip.io`, build và chạy API + Ollama + Caddy, tải model AI `qwen2.5:3b` (khoảng 2 GB), đặt lịch tự cập nhật 15 phút một lần. Lần đầu mất khoảng 10–20 phút. Cuối cùng in ra địa chỉ API.
 
 Tên miền dùng [sslip.io](https://sslip.io): tên chứa sẵn IP nên không cần đăng ký tài khoản hay cấu hình DNS. Caddy tự xin chứng chỉ HTTPS (Let's Encrypt, nếu lỗi thì ZeroSSL). Muốn dùng tên miền riêng: trỏ bản ghi A về IP máy, sửa `DOMAIN=` trong `deploy/oracle/.env`, chạy lại `install`.
 
@@ -71,7 +71,7 @@ sudo deploy/oracle/scambodia.sh status
 curl -s https://scambodia-<IP>.sslip.io/health
 ```
 
-Chưa có model thì `/health` trả `503 Unhealthy`: **đúng như mong đợi**. API vẫn kết luận lừa đảo cho tin có link trong danh sách chặn hoặc trùng văn mẫu; tin khác trả 503 đến khi có model.
+`/health` trả `200 Healthy` khi Ollama đã tải xong model. Lần phân loại đầu chậm (10–30 giây để nạp model vào RAM), các lần sau vài giây mỗi tin. Đổi model: sửa `LLM_MODEL=` trong `deploy/oracle/.env` rồi chạy lại `install`.
 
 ## Bước 6. Kết nối extension
 
@@ -103,7 +103,7 @@ scp -i <private-key> models/scam-detector.onnx models/vocab.txt models/bpe.codes
 ssh -i <private-key> ubuntu@<PUBLIC_IP> "sudo scambodiadetector/deploy/oracle/scambodia.sh restart"
 ```
 
-`/health` chuyển sang `200 Healthy`.
+API tự dùng PhoBERT (nhanh hơn), LLM lùi về dự phòng.
 
 ## Tự cập nhật
 
@@ -135,4 +135,5 @@ ssh -i <private-key> ubuntu@<PUBLIC_IP> "sudo scambodiadetector/deploy/oracle/sc
 | `ssh` không vào được | Sai file key, hoặc chưa `chmod 600` file key (macOS/Linux) |
 | Extension báo "Không kết nối được máy chủ" | Chưa bấm Cho phép quyền ở Bước 6, hoặc sai địa chỉ (phải có `https://`) |
 | Build bị kill | Thiếu RAM: kiểm tra swap bằng `swapon --show` |
+| `/health` 503, `logs api` báo LLM không trả lời | Model chưa tải xong: `sudo docker compose -f deploy/oracle/docker-compose.yml exec ollama ollama list`; tải lại bằng `install` |
 | `update` báo không fast-forward | Có file bị sửa tay trên máy chủ: `git -C ~/scambodiadetector status` |

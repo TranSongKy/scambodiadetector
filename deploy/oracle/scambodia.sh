@@ -18,6 +18,7 @@ readonly UPDATE_SCHEDULE="*/15 * * * *"
 readonly PUBLIC_IP_URL="https://api.ipify.org"
 readonly REBUILD_PATHS='^(src/|Dockerfile$|Directory\.Build\.props$|\.editorconfig$|deploy/oracle/(docker-compose\.yml|Caddyfile)$)'
 readonly HTTP_PORTS=(80 443)
+readonly DEFAULT_LLM_MODEL="qwen2.5:3b"
 
 log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -113,6 +114,19 @@ prepare_models_dir() {
     find "$REPO_DIR/data/threat-intel" -type f -exec chmod a+r {} +
 }
 
+llm_model() {
+    local configured
+    configured="$(env_value LLM_MODEL)"
+    printf '%s' "${configured:-$DEFAULT_LLM_MODEL}"
+}
+
+pull_llm_model() {
+    local model
+    model="$(llm_model)"
+    log "Tải model AI $model cho Ollama (lần đầu khoảng 2 GB)"
+    compose exec -T ollama ollama pull "$model"
+}
+
 install_update_cron() {
     printf '%s root %s update >> %s 2>&1\n' "$UPDATE_SCHEDULE" "$DEPLOY_DIR/scambodia.sh" "$UPDATE_LOG" > "$CRON_FILE"
     chmod 644 "$CRON_FILE"
@@ -126,9 +140,9 @@ print_summary() {
     if [[ -n "$(env_value TELEGRAM_BOT_TOKEN)" ]]; then
         bot_status="đang chạy"
     fi
-    model_status="chưa có, API chỉ dùng danh sách chặn và văn mẫu (xem docs/deploy-oracle.md)"
+    model_status="PhoBERT chưa có, API dùng LLM $(llm_model) qua Ollama"
     if [[ -f "$REPO_DIR/models/scam-detector.onnx" ]]; then
-        model_status="đã có"
+        model_status="PhoBERT đã có, LLM $(llm_model) làm dự phòng"
     fi
     cat <<SUMMARY
 
@@ -149,6 +163,7 @@ command_install() {
     prepare_models_dir
     log "Build và khởi động container (lần đầu mất 5–15 phút)"
     compose up -d --build --remove-orphans
+    pull_llm_model
     install_update_cron
     print_summary
 }
@@ -168,6 +183,7 @@ command_update() {
     if grep -qE "$REBUILD_PATHS" <<< "$changed"; then
         log "Code thay đổi (${current:0:7}..${target:0:7}), build lại"
         compose up -d --build --remove-orphans
+        pull_llm_model
         docker image prune -f >/dev/null
     else
         log "Chỉ dữ liệu thay đổi (${current:0:7}..${target:0:7}), API tự nạp lại"
@@ -196,7 +212,7 @@ command_logs() {
 usage() {
     cat <<USAGE
 Cách dùng: sudo deploy/oracle/scambodia.sh <lệnh>
-  install   Cài Docker, mở cổng, tạo tên miền, build và chạy, đặt lịch tự cập nhật
+  install   Cài Docker, mở cổng, tạo tên miền, build và chạy, tải model AI, đặt lịch tự cập nhật
   update    Kéo main mới; chỉ build lại khi code đổi (cron gọi mỗi 15 phút)
   restart   Khởi động lại container (sau khi chép model mới vào models/)
   status    Trạng thái container và /health

@@ -54,6 +54,46 @@ jobs:
           --project src/ScamDetector.Infrastructure
           --connection "Server=localhost,1433;Database=ScamDetector;User Id=sa;Password=Ci-Only-Password-123;TrustServerCertificate=True"
 
+  llm:
+    runs-on: ubuntu-latest
+    needs: dotnet
+    services:
+      ollama:
+        image: ollama/ollama:latest
+        ports:
+          - 11434:11434
+    env:
+      LLM_MODEL: qwen2.5:0.5b
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Pull small model
+        run: |
+          curl -sf http://localhost:11434/api/pull -d "{\"model\":\"$LLM_MODEL\",\"stream\":false}"
+      - name: Classify through Ollama without PhoBERT
+        env:
+          ASPNETCORE_URLS: http://localhost:8080
+          LlmModel__BaseUrl: http://localhost:11434
+          LlmModel__Model: ${{ env.LLM_MODEL }}
+          OnnxModel__ModelPath: missing.onnx
+        run: |
+          dotnet run --project src/ScamDetector.Api --configuration Release --no-launch-profile > api.log 2>&1 &
+          status=""
+          for attempt in $(seq 1 90); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health || true)
+            [ "$status" = "200" ] && break
+            sleep 2
+          done
+          test "$status" = "200" || { cat api.log; exit 1; }
+          for text in "Tai khoan cua ban bi khoa, bam vao link va nhap ma OTP de mo khoa" "Toi nay 7h di an lau nhe"; do
+            body=$(jq -n --arg text "$text" '{text: $text}')
+            response=$(curl -sf -H 'content-type: application/json' -d "$body" http://localhost:8080/api/v1/classifications)
+            echo "$text -> $response"
+            echo "$response" | jq -e '.label | IN("scam", "spam", "normal")' > /dev/null
+          done
+
   tokenizer-parity:
     runs-on: ubuntu-latest
     steps:
