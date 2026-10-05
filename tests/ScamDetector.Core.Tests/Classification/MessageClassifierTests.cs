@@ -283,7 +283,7 @@ public sealed class MessageClassifierTests
     }
 
     [Fact]
-    public async Task ClassifyAsync_ModelAvailableAndStrongThreat_CallsModelAndOverridesNormalPrediction()
+    public async Task ClassifyAsync_ModelAvailableAndStrongThreat_DoesNotCallModelAndReturnsScam()
     {
         var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05));
         var threat = new FakeThreatIntelligence(new ThreatMatch(["bad.example"], null));
@@ -291,7 +291,7 @@ public sealed class MessageClassifierTests
 
         var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
 
-        Assert.Equal(1, model.CallCount);
+        Assert.Equal(0, model.CallCount);
         Assert.Equal(MessageLabel.Scam, result.Value.Label);
         Assert.Equal([ThreatReasons.BlocklistedDomain, UrlReason], result.Value.Reasons);
     }

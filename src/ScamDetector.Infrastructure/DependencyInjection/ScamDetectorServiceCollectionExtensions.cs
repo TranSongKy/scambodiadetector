@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using ScamDetector.Core.Classification;
 using ScamDetector.Core.ThreatIntel;
 using ScamDetector.Core.Urls;
+using ScamDetector.Infrastructure.Llm;
 using ScamDetector.Infrastructure.Onnx;
 using ScamDetector.Infrastructure.ThreatIntel;
 
@@ -32,10 +33,37 @@ public static class ScamDetectorServiceCollectionExtensions
             Path.Combine(contentRootPath, threatIntelOptions.DataDirectory),
             threatIntelOptions,
             provider.GetRequiredService<TimeProvider>()));
-        services.AddSingleton(_ => ScamModelFactory.Create(onnxModelOptions, contentRootPath));
+        var llmModelOptions = configuration.GetSection(LlmModelOptions.SectionName).Get<LlmModelOptions>()
+            ?? new LlmModelOptions();
+        services.AddSingleton(llmModelOptions);
+        if (llmModelOptions.IsEnabled)
+            services.AddOllamaHttpClient(llmModelOptions);
+        services.AddSingleton<IScamModel>(provider => new FallbackScamModel(
+            CreateModelChain(provider, onnxModelOptions, llmModelOptions, contentRootPath)));
         services.AddSingleton<IUrlInspector, RuleBasedUrlInspector>();
         services.AddSingleton<IMessageClassifier, MessageClassifier>();
 
         return services;
+    }
+
+    private static void AddOllamaHttpClient(this IServiceCollection services, LlmModelOptions llmModelOptions) =>
+        services
+            .AddHttpClient(LlmModelOptions.HttpClientName, client =>
+            {
+                client.BaseAddress = new Uri(llmModelOptions.BaseUrl, UriKind.Absolute);
+                client.Timeout = llmModelOptions.RequestTimeout;
+            })
+            .RemoveAllLoggers();
+
+    private static List<IScamModel> CreateModelChain(
+        IServiceProvider provider,
+        OnnxModelOptions onnxModelOptions,
+        LlmModelOptions llmModelOptions,
+        string contentRootPath)
+    {
+        List<IScamModel> models = [ScamModelFactory.Create(onnxModelOptions, contentRootPath)];
+        if (llmModelOptions.IsEnabled)
+            models.Add(new OllamaScamModel(provider.GetRequiredService<IHttpClientFactory>(), llmModelOptions));
+        return models;
     }
 }

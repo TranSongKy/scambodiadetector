@@ -25,7 +25,7 @@ public sealed class MessageClassifier(
         var maskedText = ModelInputMasker.Mask(normalizedText);
         var urlFindings = await urlInspector.InspectAsync(normalizedText, cancellationToken);
         var threat = _threatIntelligence.Match(normalizedText, maskedText);
-        if (!model.IsAvailable && threat.IsStrongSignal)
+        if (threat.IsStrongSignal)
             return ClassificationResult.FromThreatSignals(threat, urlFindings);
 
         var prediction = await model.PredictAsync(maskedText, cancellationToken);

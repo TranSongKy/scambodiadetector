@@ -180,3 +180,16 @@ Mỗi quyết định ghi: bối cảnh, lựa chọn, lý do, đánh đổi.
 - **Tự cập nhật kiểu kéo (pull):** Crawl vẫn trên GitHub Actions; máy chủ chạy `scambodia.sh update` mỗi 15 phút, chỉ build lại khi code thay đổi, dữ liệu thì API tự nạp lại. Không cần lưu khoá SSH của máy chủ trong GitHub.
 - **Kiểm chứng:** CI build và chạy image trên runner ARM (`ubuntu-24.04-arm`) và chạy thử API sau Caddy với HTTPS.
 - **Rủi ro:** Oracle có thể đổi hạn mức hoặc thu hồi máy nhàn rỗi; dự phòng là chạy cùng compose trên máy ở nhà qua Cloudflare Tunnel.
+
+## 024. Phát hiện tổng quát: LLM tự chạy làm model dự phòng cho PhoBERT
+
+- **Bối cảnh:** Chưa có dữ liệu đã duyệt để train PhoBERT, nên API chỉ bắt được tin trùng danh sách chặn hoặc văn mẫu; mọi tin khác trả 503. Người dùng muốn mọi tin đều được một model AI kiểm tra.
+- **Lựa chọn (người dùng chọn 10/2026):** LLM mã nguồn mở chạy trên máy chủ của mình qua Ollama, mặc định `qwen2.5:3b`. Không dùng API trả phí (Claude) hay API miễn phí có điều kiện dùng dữ liệu (Gemini free tier).
+- **Thiết kế:**
+  - `FallbackScamModel` (Core) chọn model đầu tiên sẵn sàng theo thứ tự: PhoBERT ONNX → `OllamaScamModel`. Khi PhoBERT train xong, LLM tự lùi về dự phòng, không phải đổi cấu hình.
+  - LLM nhận **văn bản đã che PII** như PhoBERT, trả JSON theo schema cố định (`label`, `confidence`), nhiệt độ 0. Nội dung tin được bọc trong thẻ và prompt dặn coi là dữ liệu, giảm rủi ro tin nhắn chứa chỉ dẫn lừa model.
+  - Tín hiệu mạnh (danh sách chặn, văn mẫu) kết luận ngay, không gọi model: nhanh hơn và không phụ thuộc LLM.
+  - LLM lỗi, hết giờ hoặc trả sai định dạng → `ScamModelUnavailableException` → 503 như khi thiếu model. `/health` hỏi Ollama `api/tags` xem model đã được `pull` chưa.
+  - Không thêm package: dùng `HttpClient` và `System.Text.Json` có sẵn trong framework.
+- **Đánh đổi:** Chậm hơn PhoBERT (vài giây mỗi tin trên CPU ARM), cần thêm khoảng 3 GB RAM. `confidence` do LLM tự báo, chưa được hiệu chỉnh như xác suất softmax, nên ngưỡng 0.7 chỉ là tạm. Nhãn LLM chọn được kẹp tối thiểu 0.5 để luôn là nhãn có xác suất cao nhất; vì vậy không được hạ `Classification:ScamThreshold` xuống ≤ 0.5 khi đang dùng LLM, nếu không mọi kết luận `scam` của LLM đều vượt ngưỡng. Chưa có số đo độ chính xác; phải đo trên tập đánh giá (giai đoạn 5 trong `docs/ke-hoach-phat-hien-tong-quat.md`) trước khi tin vào kết quả.
+- **Kiểm chứng:** Test đơn vị với HTTP giả; job CI `llm` chạy API với Ollama thật và model `qwen2.5:0.5b` để kiểm tra hợp đồng request/response.

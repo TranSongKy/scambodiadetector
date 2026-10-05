@@ -109,21 +109,30 @@ Script in macro F1, F1 scam trên tập test và dòng để ghi vào `docs/expe
 
 ## Chạy API ở máy
 
-API cần 3 file model trong `models/` (đường dẫn cấu hình ở `src/ScamDetector.Api/appsettings.json`, mục `OnnxModel`):
+API chọn model theo thứ tự (quyết định 024):
 
-| File | Nguồn |
-|---|---|
-| `models/scam-detector.onnx` | Export từ notebook huấn luyện |
-| `models/vocab.txt` | `vocab.txt` của tokenizer PhoBERT đã dùng khi train |
-| `models/bpe.codes` | `bpe.codes` của tokenizer PhoBERT đã dùng khi train |
+1. **PhoBERT ONNX** khi có đủ 3 file trong `models/` (mục `OnnxModel` trong `appsettings.json`):
+
+   | File | Nguồn |
+   |---|---|
+   | `models/scam-detector.onnx` | Export từ notebook huấn luyện |
+   | `models/vocab.txt` | `vocab.txt` của tokenizer PhoBERT đã dùng khi train |
+   | `models/bpe.codes` | `bpe.codes` của tokenizer PhoBERT đã dùng khi train |
+
+2. **LLM tự chạy qua [Ollama](https://ollama.com)** (mặc định `qwen2.5:3b`, mục `LlmModel`) khi chưa có PhoBERT. Cài một lần:
+
+   ```bash
+   # Windows: tải bộ cài ở https://ollama.com/download ; macOS/Linux theo hướng dẫn cùng trang
+   ollama pull qwen2.5:3b     # khoảng 2 GB, cần thêm ~3 GB RAM khi chạy
+   ```
 
 ```bash
 dotnet run --project src/ScamDetector.Api
 ```
 
-API nghe ở `http://localhost:8080`, cùng cổng với Docker và với địa chỉ mặc định của extension, nên nạp extension là dùng được ngay.
+API nghe ở `http://localhost:8080`, cùng cổng với Docker và với địa chỉ mặc định của extension, nên nạp extension là dùng được ngay. `dotnet run` tự trỏ `LlmModel:BaseUrl` tới `http://localhost:11434` (xem `launchSettings.json`); để tắt LLM, đặt biến môi trường `LlmModel__BaseUrl=` rỗng.
 
-Khi thiếu file model, API vẫn khởi động: `/health` trả `503 Unhealthy` và endpoint phân loại trả `503` dạng ProblemDetails.
+Tin chứa tên miền trong danh sách chặn hoặc trùng văn mẫu luôn được kết luận lừa đảo ngay, không gọi model. Khi không có PhoBERT và Ollama chưa chạy (hoặc chưa `pull` model), API vẫn khởi động: `/health` trả `503 Unhealthy` và các tin còn lại trả `503` dạng ProblemDetails.
 
 Muốn chạy thử ngay mà chưa có model thật, dùng model fixture của test (chỉ để kiểm tra luồng, không phân loại có nghĩa):
 
@@ -162,7 +171,7 @@ Lỗi trả về theo RFC 9457 (`application/problem+json`):
 | 400 | Text rỗng | `classification.empty_text` |
 | 400 | Text dài hơn 2000 ký tự | `classification.text_too_long` |
 | 400 | JSON sai | — |
-| 503 | Chưa có file model và tin không trùng danh sách chặn hay văn mẫu | — |
+| 503 | Không có PhoBERT, LLM chưa sẵn sàng, và tin không trùng danh sách chặn hay văn mẫu | — |
 
 ### `POST /api/v1/reports`
 
@@ -189,7 +198,7 @@ File xuất có `source = contributed`, `annotator` để trống; duyệt và s
 
 ### `GET /health`
 
-`200 Healthy` khi model đã nạp, `503 Unhealthy` khi thiếu file model.
+`200 Healthy` khi PhoBERT đã nạp, hoặc khi đang dùng LLM và Ollama trả lời được với model đã `pull`; ngược lại `503 Unhealthy`.
 
 ## Telegram bot
 
@@ -343,4 +352,4 @@ Model export phải khớp các điểm sau, nếu không kết quả sẽ sai m
 
 ## CI
 
-`.github/workflows/ci.yml` chạy build và test .NET, chạy migration trên SQL Server thật, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container, và chạy `validate_threat_intel.py`. `.github/workflows/threat-intel.yml` crawl hằng ngày và mở PR cập nhật dữ liệu lừa đảo.
+`.github/workflows/ci.yml` chạy build và test .NET, chạy migration trên SQL Server thật, ruff và test Python, validate dataset (khi có mẫu), test và đóng gói Chrome extension, build Docker image cho Api và Bot rồi smoke test container, chạy API với Ollama thật (model nhỏ `qwen2.5:0.5b`) để kiểm tra hợp đồng gọi LLM, và chạy `validate_threat_intel.py`. `.github/workflows/threat-intel.yml` crawl hằng ngày và mở PR cập nhật dữ liệu lừa đảo.

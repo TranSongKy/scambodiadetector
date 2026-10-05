@@ -5,7 +5,6 @@ using ScamDetector.Api.Reports;
 using ScamDetector.Core.Classification;
 using ScamDetector.Infrastructure.DependencyInjection;
 using ScamDetector.Infrastructure.HealthChecks;
-using ScamDetector.Infrastructure.Onnx;
 
 var builder = WebApplication.CreateBuilder(args);
 var rateLimitOptions = builder.Configuration.GetSection(RateLimitOptions.SectionName).Get<RateLimitOptions>() ?? new RateLimitOptions();
@@ -21,8 +20,8 @@ builder.Services.AddSingleton(builder.Configuration.GetSection(ReportAdminOption
 
 var app = builder.Build();
 
-if (app.Services.GetRequiredService<IScamModel>() is UnavailableScamModel unavailableModel)
-    app.Logger.LogWarning("Scam model is unavailable, missing files: {MissingFiles}", unavailableModel.MissingFiles);
+if (!app.Services.GetRequiredService<IScamModel>().IsAvailable)
+    app.Logger.LogWarning("No classification model is configured: add PhoBERT files to models/ or set LlmModel:BaseUrl");
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
