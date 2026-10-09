@@ -462,4 +462,26 @@ public sealed class MessageClassifierTests
 
         Assert.Equal("vtp-vandon.online", _urlInspector.ReceivedText);
     }
+
+    [Fact]
+    public async Task ClassifyAsync_ObfuscatedLink_PassesUrlPlaceholderToModel()
+    {
+        var classifier = CreateClassifier();
+
+        await classifier.ClassifyAsync("Tra cuu tai vtp-vandon[.]online ngay", CancellationToken.None);
+
+        Assert.Equal("Tra cuu tai <URL> ngay", _model.ReceivedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndUrlRiskEqualsThresholdWithinRounding_ReturnsScam()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 1, spam: 0, scam: 0), isAvailable: false);
+        var options = new ClassificationOptions { ScamThreshold = UrlRisk.WeightOf(UrlReasons.Obfuscated) + 1e-12 };
+        var classifier = new MessageClassifier(model, new FakeUrlInspector([ObfuscatedFinding]), options);
+
+        var result = await classifier.ClassifyAsync("vtp-vandon[.]online", CancellationToken.None);
+
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+    }
 }

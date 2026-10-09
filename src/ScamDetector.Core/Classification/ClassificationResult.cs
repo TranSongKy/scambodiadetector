@@ -21,13 +21,13 @@ public sealed record ClassificationResult(MessageLabel Label, double Confidence,
         var scamProbability = UrlRisk.CombineWithModel(modelScamProbability, UrlRisk.Combine(urlFindings));
         var reasons = new List<string>();
 
-        if (scamProbability >= scamThreshold || threat.IsStrongSignal)
+        if (ClassificationOptions.ReachesThreshold(scamProbability, scamThreshold) || threat.IsStrongSignal)
         {
-            if (modelScamProbability >= scamThreshold)
+            if (ClassificationOptions.ReachesThreshold(modelScamProbability, scamThreshold))
                 reasons.Add(ClassificationReasons.ModelPredictedScam);
             reasons.AddRange(threat.Reasons());
-            reasons.AddRange(urlFindings.Select(finding => finding.Reason));
-            return new ClassificationResult(MessageLabel.Scam, Math.Max(scamProbability, threat.SignalConfidence), reasons);
+            reasons.AddRange(UrlReasonsOf(urlFindings));
+            return new ClassificationResult(MessageLabel.Scam, Math.Max(scamProbability, threat.SignalConfidence), Distinct(reasons));
         }
 
         var label = PickNonScamLabel(prediction);
@@ -35,19 +35,25 @@ public sealed record ClassificationResult(MessageLabel Label, double Confidence,
             reasons.Add(ClassificationReasons.ModelPredictedSpam);
         if (scamProbability > prediction.ProbabilityOf(label))
             reasons.Add(ClassificationReasons.ScamBelowThreshold);
-        reasons.AddRange(urlFindings.Select(finding => finding.Reason));
+        reasons.AddRange(UrlReasonsOf(urlFindings));
 
-        return new ClassificationResult(label, prediction.ProbabilityOf(label), reasons);
+        return new ClassificationResult(label, prediction.ProbabilityOf(label), Distinct(reasons));
     }
 
     public static ClassificationResult FromUrlSignals(IReadOnlyList<UrlFinding> urlFindings) =>
-        new(MessageLabel.Scam, UrlRisk.Combine(urlFindings), [.. urlFindings.Select(finding => finding.Reason)]);
+        new(MessageLabel.Scam, UrlRisk.Combine(urlFindings), Distinct(UrlReasonsOf(urlFindings)));
 
     public static ClassificationResult FromThreatSignals(ThreatMatch threat, IReadOnlyList<UrlFinding> urlFindings) =>
         new(
             MessageLabel.Scam,
             threat.SignalConfidence,
-            [.. threat.Reasons(), .. urlFindings.Select(finding => finding.Reason)]);
+            Distinct([.. threat.Reasons(), .. UrlReasonsOf(urlFindings)]));
+
+    private static IEnumerable<string> UrlReasonsOf(IReadOnlyList<UrlFinding> urlFindings) =>
+        urlFindings.Select(finding => finding.Reason);
+
+    private static List<string> Distinct(IEnumerable<string> reasons) =>
+        reasons.Distinct(StringComparer.Ordinal).ToList();
 
     private static MessageLabel PickNonScamLabel(ModelPrediction prediction) =>
         prediction.ProbabilityOf(MessageLabel.Spam) > prediction.ProbabilityOf(MessageLabel.Normal)

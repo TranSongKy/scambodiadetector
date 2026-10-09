@@ -13,7 +13,9 @@ public static partial class UrlDeobfuscator
         return DefangedScheme().Replace(restoredText, RestoredScheme);
     }
 
-    [GeneratedRegex(@"\s?[\[\(\{]\s?(?:\.|dot|ch[ấa]m)\s?[\]\)\}]\s?", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(
+        @"(?<=[a-z0-9])\s?(?:\[\s?(?:\.|dot|ch[ấa]m)\s?\]|\(\s?(?:\.|dot|ch[ấa]m)\s?\)|\{\s?(?:\.|dot|ch[ấa]m)\s?\})\s?(?=[a-z0-9])",
+        RegexOptions.IgnoreCase)]
     private static partial Regex BracketedDot();
 
     [GeneratedRegex(@"\bh(?:xx|\*\*)p(s?)(?:\[:\]|:)//", RegexOptions.IgnoreCase)]

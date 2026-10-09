@@ -178,44 +178,14 @@ public sealed class BrandImpersonationTests
 
     [Theory]
     [InlineData("vietcombank.com")]
-    [InlineData("vietcombank.com.vn")]
-    [InlineData("www.vietcombank.com.vn")]
     [InlineData("vietcombank.vn")]
-    [InlineData("shopee.vn")]
-    [InlineData("momo.vn")]
-    [InlineData("vietcombank.com.")]
-    public void IsImpersonating_BrandOwnedNameOnOrdinarySuffix_ReturnsFalse(string host)
+    [InlineData("momo.link")]
+    [InlineData("bidv.info")]
+    [InlineData("www.vietcombank.com.vn")]
+    public void IsImpersonating_BrandNameNotListedAsOfficial_ReturnsTrue(string host)
     {
         var result = BrandImpersonation.IsImpersonating(host, NoHostIsOfficial);
 
-        Assert.False(result);
-    }
-
-    [Theory]
-    [InlineData("vietcombank.com.vn")]
-    [InlineData("www.vietcombank.com")]
-    [InlineData("momo.vn")]
-    [InlineData("a.b.shopee.com.vn")]
-    public void IsBrandOwnedName_KeywordAsMainLabelOnOrdinarySuffix_ReturnsTrue(string host)
-    {
-        var result = BrandImpersonation.IsBrandOwnedName(host);
-
         Assert.True(result);
-    }
-
-    [Theory]
-    [InlineData("vietcombank.top")]
-    [InlineData("acb.online")]
-    [InlineData("vietcombank-xacthuc.com")]
-    [InlineData("vietcombank.evil.com")]
-    [InlineData("com.vn")]
-    [InlineData("vietcombank")]
-    [InlineData("example.com")]
-    [InlineData("")]
-    public void IsBrandOwnedName_OtherHost_ReturnsFalse(string host)
-    {
-        var result = BrandImpersonation.IsBrandOwnedName(host);
-
-        Assert.False(result);
     }
 }

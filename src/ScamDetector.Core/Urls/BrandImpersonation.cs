@@ -8,16 +8,8 @@ public static class BrandImpersonation
     public const int MinimumTypoKeywordLength = 8;
     private const int MaximumTypoDistance = 1;
 
-    private const char LabelSeparator = '.';
-    private const int SecondLevelSuffixLabelCount = 2;
-    private const int TopLevelSuffixLabelCount = 1;
-
-    private const string VietnameseTopLevelDomain = "vn";
-
     private static readonly char[] TokenSeparators = ['.', '-', '_'];
 
-    private static readonly HashSet<string> VietnameseSecondLevelSuffixes =
-        new HashSet<string>(StringComparer.Ordinal) { "com", "net", "org", "gov", "edu", "info", "biz" };
     private static readonly (string Lookalike, string Original)[] LookalikeSequences = [("rn", "m"), ("vv", "w")];
     private static readonly IReadOnlyDictionary<char, char> LookalikeCharacters = new Dictionary<char, char>
     {
@@ -29,30 +21,13 @@ public static class BrandImpersonation
 
     public static bool IsImpersonating(string host, Func<string, bool> isOfficialHost)
     {
-        if (isOfficialHost(host) || IsBrandOwnedName(host))
+        if (isOfficialHost(host))
             return false;
 
         return host.Split(TokenSeparators, StringSplitOptions.RemoveEmptyEntries)
             .Select(Skeleton)
             .Any(tokenSkeleton => KeywordSkeletons.Any(keyword => Matches(tokenSkeleton, keyword.Keyword, keyword.Skeleton)));
     }
-
-    public static bool IsBrandOwnedName(string host)
-    {
-        var labels = host.TrimEnd(LabelSeparator).Split(LabelSeparator);
-        var suffixLength = SuffixLabelCount(labels);
-        if (labels.Length <= suffixLength || UrlRuleLists.SuspiciousTopLevelDomains.Contains(labels[^1]))
-            return false;
-        var mainLabel = labels[^(suffixLength + 1)];
-        return BrandKeywords.All.Contains(mainLabel, StringComparer.Ordinal);
-    }
-
-    private static int SuffixLabelCount(string[] labels) =>
-        labels.Length > SecondLevelSuffixLabelCount
-        && labels[^1] == VietnameseTopLevelDomain
-        && VietnameseSecondLevelSuffixes.Contains(labels[^2])
-            ? SecondLevelSuffixLabelCount
-            : TopLevelSuffixLabelCount;
 
     public static string Skeleton(string token)
     {

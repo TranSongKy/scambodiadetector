@@ -7,7 +7,7 @@ public static partial class ModelInputMasker
 {
     public static string Mask(string normalizedText)
     {
-        var maskedText = EmailPattern().Replace(normalizedText, Placeholders.Email);
+        var maskedText = EmailPattern().Replace(UrlDeobfuscator.Restore(normalizedText), Placeholders.Email);
         maskedText = UrlExtractor.Replace(maskedText, Placeholders.Url);
         maskedText = OtpPattern().Replace(maskedText, Placeholders.Otp);
         maskedText = IdPattern().Replace(maskedText, Placeholders.Id);

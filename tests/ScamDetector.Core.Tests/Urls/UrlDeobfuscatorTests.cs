@@ -60,6 +60,12 @@ public sealed class UrlDeobfuscatorTests
     [InlineData("Gap nhau (chieu nay) nhe")]
     [InlineData("[Thông báo]")]
     [InlineData("[Thong bao]")]
+    [InlineData("a[.)b")]
+    [InlineData("a(.]b")]
+    [InlineData("a{dot]b")]
+    [InlineData("a [.]")]
+    [InlineData("[.] b")]
+    [InlineData("a  [.] b")]
     [InlineData("xem https://a.example/x")]
     [InlineData("Tài khoản của bạn bị khóa")]
     public void Restore_OrdinaryText_ReturnsUnchanged(string text)

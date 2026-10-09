@@ -28,7 +28,7 @@ public sealed class MessageClassifier(
         IReadOnlyList<UrlFinding> urlFindings = [.. inspectedFindings, .. threat.BrandImpersonations];
         if (threat.IsStrongSignal)
             return ClassificationResult.FromThreatSignals(threat, urlFindings);
-        if (!model.IsAvailable && UrlRisk.Combine(urlFindings) >= options.ScamThreshold)
+        if (!model.IsAvailable && ClassificationOptions.ReachesThreshold(UrlRisk.Combine(urlFindings), options.ScamThreshold))
             return ClassificationResult.FromUrlSignals(urlFindings);
 
         var prediction = await model.PredictAsync(maskedText, cancellationToken);
