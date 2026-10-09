@@ -3,6 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <title>Cài đặt Scambodia Detector</title>
+    <style>
+      body { font: 14px/1.5 system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; }
+      fieldset { border: 1px solid #dadce0; border-radius: 8px; margin: 16px 0; padding: 12px 16px; }
+      legend { font-weight: 600; }
+      .site { display: block; margin: 4px 0; }
+      .hint { color: #5f6368; }
+    </style>
   </head>
   <body>
     <h1>Cài đặt</h1>
@@ -10,6 +17,16 @@
     <input id="api-base-url" type="url" size="40" placeholder="http://localhost:8080" />
     <button id="save" type="button">Lưu</button>
     <p id="status" role="status"></p>
+
+    <fieldset>
+      <legend id="scan-heading"></legend>
+      <p id="scan-hint" class="hint"></p>
+      <div id="scan-sites"></div>
+      <label for="custom-site" id="custom-site-label"></label>
+      <input id="custom-site" type="url" size="32" placeholder="https://" />
+      <button id="add-site" type="button"></button>
+      <p id="scan-status" role="status"></p>
+    </fieldset>
     <script type="module" src="options.js"></script>
   </body>
 </html>

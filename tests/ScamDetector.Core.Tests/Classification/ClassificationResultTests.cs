@@ -253,4 +253,163 @@ public sealed class ClassificationResultTests
         Assert.Equal(0.7, result.Confidence);
         Assert.Equal([ThreatReasons.KnownScamTemplate], result.Reasons);
     }
+
+    [Fact]
+    public void From_ModelBelowThresholdButBrandImpersonation_ReturnsScamWithoutModelReason()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.3, spam: 0.2, scam: 0.5);
+        var findings = new[] { new UrlFinding("http://bidv-xacthuc.com", UrlReasons.BrandImpersonation) };
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(0.8, result.Confidence, precision: 10);
+        Assert.Equal([UrlReasons.BrandImpersonation], result.Reasons);
+        Assert.DoesNotContain(ClassificationReasons.ModelPredictedScam, result.Reasons);
+    }
+
+    [Fact]
+    public void From_ModelAboveThresholdAndUrlFinding_IncludesModelReasonBeforeUrlReason()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.1, spam: 0.1, scam: 0.8);
+        var findings = new[] { new UrlFinding("http://bidv-xacthuc.com", UrlReasons.BrandImpersonation) };
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(UrlRisk.CombineWithModel(0.8, UrlRisk.BrandImpersonationWeight), result.Confidence, precision: 10);
+        Assert.Equal([ClassificationReasons.ModelPredictedScam, UrlReasons.BrandImpersonation], result.Reasons);
+    }
+
+    [Fact]
+    public void From_ModelNormalAndWeakUrlRisk_StaysNormalWithModelConfidence()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05);
+        var findings = new[] { new UrlFinding("http://a.example", UrlReasons.Shortener) };
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal(MessageLabel.Normal, result.Label);
+        Assert.Equal(0.9, result.Confidence);
+        Assert.Equal([UrlReasons.Shortener], result.Reasons);
+    }
+
+    [Fact]
+    public void From_ModelNormalAndUnknownUrlReason_DoesNotRaiseScamProbability()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05);
+
+        var result = ClassificationResult.From(prediction, TwoFindings, Threshold);
+
+        Assert.Equal(MessageLabel.Normal, result.Label);
+        Assert.DoesNotContain(ClassificationReasons.ScamBelowThreshold, result.Reasons);
+    }
+
+    [Fact]
+    public void From_UrlRiskLiftsScamAboveNonScamLabel_ReturnsScamBelowThresholdReasonWhenStillBelow()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.4, spam: 0.2, scam: 0.4);
+        var findings = new[] { new UrlFinding("http://a.example", UrlReasons.Shortener) };
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal(MessageLabel.Normal, result.Label);
+        Assert.Equal([ClassificationReasons.ScamBelowThreshold, UrlReasons.Shortener], result.Reasons);
+    }
+
+    [Fact]
+    public void FromUrlSignals_Findings_ReturnsScamWithCombinedRiskAndReasons()
+    {
+        var findings = new[]
+        {
+            new UrlFinding("vtp-vandon.online", UrlReasons.Obfuscated),
+            new UrlFinding("vtp-vandon.online", UrlReasons.BrandImpersonation),
+        };
+
+        var result = ClassificationResult.FromUrlSignals(findings);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(UrlRisk.Combine(findings), result.Confidence, precision: 10);
+        Assert.Equal([UrlReasons.Obfuscated, UrlReasons.BrandImpersonation], result.Reasons);
+    }
+
+    [Fact]
+    public void FromUrlSignals_NoFindings_ReturnsScamWithZeroConfidenceAndNoReasons()
+    {
+        var result = ClassificationResult.FromUrlSignals(NoFindings);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+        Assert.Equal(0, result.Confidence);
+        Assert.Empty(result.Reasons);
+    }
+
+    [Fact]
+    public void From_TwoFindingsWithSameReason_ListsReasonOnce()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.05, spam: 0.05, scam: 0.9);
+        IReadOnlyList<UrlFinding> findings =
+        [
+            new UrlFinding("http://a.example", FirstUrlReason),
+            new UrlFinding("http://b.example", FirstUrlReason),
+        ];
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal([ClassificationReasons.ModelPredictedScam, FirstUrlReason], result.Reasons);
+    }
+
+    [Fact]
+    public void From_TwoFindingsWithSameReasonBelowThreshold_ListsReasonOnce()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05);
+        IReadOnlyList<UrlFinding> findings =
+        [
+            new UrlFinding("http://a.example", UrlReasons.Shortener),
+            new UrlFinding("http://b.example", UrlReasons.Shortener),
+        ];
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal(1, result.Reasons.Count(reason => reason == UrlReasons.Shortener));
+    }
+
+    [Fact]
+    public void FromUrlSignals_TwoFindingsWithSameReason_ListsReasonOnce()
+    {
+        IReadOnlyList<UrlFinding> findings =
+        [
+            new UrlFinding("http://a.example", FirstUrlReason),
+            new UrlFinding("http://b.example", FirstUrlReason),
+        ];
+
+        var result = ClassificationResult.FromUrlSignals(findings);
+
+        Assert.Equal([FirstUrlReason], result.Reasons);
+    }
+
+    [Fact]
+    public void FromThreatSignals_TwoFindingsWithSameReason_ListsReasonOnce()
+    {
+        IReadOnlyList<UrlFinding> findings =
+        [
+            new UrlFinding("http://a.example", FirstUrlReason),
+            new UrlFinding("http://b.example", FirstUrlReason),
+        ];
+        var threat = new ThreatMatch(["bad.example"], null);
+
+        var result = ClassificationResult.FromThreatSignals(threat, findings);
+
+        Assert.Equal(1, result.Reasons.Count(reason => reason == FirstUrlReason));
+    }
+
+    [Fact]
+    public void From_ModelHalfAndObfuscatedLink_ReturnsScamAtThresholdSeven()
+    {
+        var prediction = PredictionFactory.Create(normal: 0.3, spam: 0.2, scam: 0.5);
+        IReadOnlyList<UrlFinding> findings = [new UrlFinding("vtp-vandon.online", UrlReasons.Obfuscated)];
+
+        var result = ClassificationResult.From(prediction, findings, Threshold);
+
+        Assert.Equal(MessageLabel.Scam, result.Label);
+    }
 }

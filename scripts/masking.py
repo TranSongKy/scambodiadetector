@@ -16,6 +16,12 @@ ID_KEYWORD_WINDOW = 25
 TRAILING_URL_PUNCTUATION = ".,;:!?)]}\"'"
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
+BRACKETED_DOT_PATTERN = re.compile(
+    r"(?<=[a-z0-9])\s?(?:\[\s?(?:\.|dot|ch[ấa]m)\s?\]|\(\s?(?:\.|dot|ch[ấa]m)\s?\)|\{\s?(?:\.|dot|ch[ấa]m)\s?\})\s?(?=[a-z0-9])",
+    re.IGNORECASE,
+)
+DEFANGED_SCHEME_PATTERN = re.compile(r"\bh(?:xx|\*\*)p(s?)(?:\[:\]|:)//", re.IGNORECASE)
+INVISIBLE_CHARACTERS_PATTERN = re.compile("[\u00ad\u200b-\u200d\u2060\ufeff]")
 URL_PATTERN = re.compile(
     rf"(?:https?://|www\.)[^\s<>\"]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
     rf"(?-i:(?:{URL_TOP_LEVEL_DOMAINS})|(?:{URL_TOP_LEVEL_DOMAINS.upper()}))\b(?:/[^\s<>\"]*)?",
@@ -48,11 +54,16 @@ ACCOUNT_PATTERN = re.compile(
 
 
 def normalize_text(text: str) -> str:
-    return WHITESPACE_PATTERN.sub(" ", unicodedata.normalize("NFC", text)).strip()
+    visible_text = INVISIBLE_CHARACTERS_PATTERN.sub("", unicodedata.normalize("NFC", text))
+    return WHITESPACE_PATTERN.sub(" ", visible_text).strip()
+
+
+def restore_obfuscated_urls(text: str) -> str:
+    return DEFANGED_SCHEME_PATTERN.sub(r"http\1://", BRACKETED_DOT_PATTERN.sub(".", text))
 
 
 def has_url(text: str) -> bool:
-    return URL_PLACEHOLDER in text or URL_PATTERN.search(text) is not None
+    return URL_PLACEHOLDER in text or URL_PATTERN.search(restore_obfuscated_urls(text)) is not None
 
 
 def mask_email(text: str) -> str:
@@ -105,6 +116,7 @@ MASKING_STEPS: list[tuple[str, Callable[[str], str]]] = [
 
 
 def mask(text: str) -> str:
+    text = restore_obfuscated_urls(text)
     for _, step in MASKING_STEPS:
         text = step(text)
     return text
@@ -112,6 +124,7 @@ def mask(text: str) -> str:
 
 def find_maskable_pii(text: str) -> list[str]:
     found: list[str] = []
+    text = restore_obfuscated_urls(text)
     for name, step in MASKING_STEPS:
         masked_text = step(text)
         if masked_text != text:

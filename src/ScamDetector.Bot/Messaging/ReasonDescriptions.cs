@@ -16,6 +16,8 @@ public static class ReasonDescriptions
         [UrlReasons.IpAddressHost] = "Link dùng địa chỉ IP thay vì tên miền",
         [UrlReasons.Punycode] = "Tên miền dùng ký tự giả mạo (punycode)",
         [UrlReasons.SuspiciousTopLevelDomain] = "Tên miền có đuôi thường bị dùng để lừa đảo",
+        [UrlReasons.Obfuscated] = "Link bị viết lách (như [.] hay hxxp) để né bộ lọc",
+        [UrlReasons.BrandImpersonation] = "Tên miền giả danh ngân hàng, ví điện tử hoặc cơ quan nhà nước",
         [ThreatReasons.BlocklistedDomain] = "Link nằm trong danh sách tên miền lừa đảo đã được cảnh báo",
         [ThreatReasons.KnownScamTemplate] = "Nội dung trùng với mẫu tin lừa đảo đã được cảnh báo",
     }.ToFrozenDictionary(StringComparer.Ordinal);

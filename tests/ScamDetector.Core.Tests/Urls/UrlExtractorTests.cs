@@ -109,4 +109,52 @@ public sealed class UrlExtractorTests
 
         Assert.Equal(string.Empty, replaced);
     }
+
+    [Theory]
+    [InlineData("xem vtp-vandon[.]online ngay", "vtp-vandon.online")]
+    [InlineData("xem vtp-vandon(.)online ngay", "vtp-vandon.online")]
+    [InlineData("xem vtp-vandon [dot] online ngay", "vtp-vandon.online")]
+    [InlineData("xem vtp-vandon(chấm)online ngay", "vtp-vandon.online")]
+    [InlineData("xem hxxps://evil.example.com/x ngay", "https://evil.example.com/x")]
+    [InlineData("xem hxxp://evil.example.com ngay", "http://evil.example.com")]
+    [InlineData("xem hxxps[:]//evil.example.com/x ngay", "https://evil.example.com/x")]
+    [InlineData("xem h**ps://evil.example.com/x ngay", "https://evil.example.com/x")]
+    public void Extract_ObfuscatedLink_ReturnsRestoredUrl(string text, string expected)
+    {
+        var urls = UrlExtractor.Extract(text);
+
+        Assert.Equal([expected], urls);
+    }
+
+    [Fact]
+    public void ExtractLiteral_BracketedDotLink_ReturnsEmpty()
+    {
+        var urls = UrlExtractor.ExtractLiteral("xem vtp-vandon[.]online ngay");
+
+        Assert.Empty(urls);
+    }
+
+    [Fact]
+    public void ExtractLiteral_DefangedScheme_DoesNotRestoreScheme()
+    {
+        var urls = UrlExtractor.ExtractLiteral("xem hxxps://evil.example.com/x ngay");
+
+        Assert.DoesNotContain(urls, url => url.StartsWith("https://", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ExtractLiteral_PlainUrl_ReturnsUrl()
+    {
+        var urls = UrlExtractor.ExtractLiteral("xem https://a.example/x ngay");
+
+        Assert.Equal(["https://a.example/x"], urls);
+    }
+
+    [Fact]
+    public void Extract_OrdinaryBracketedText_ReturnsEmpty()
+    {
+        var urls = UrlExtractor.Extract("[Thông báo] Gặp nhau (chiều nay) nhé");
+
+        Assert.Empty(urls);
+    }
 }

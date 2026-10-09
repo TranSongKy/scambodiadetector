@@ -14,6 +14,8 @@ export const REASON_DESCRIPTIONS = Object.freeze({
   url_ip_address_host: "Link dùng địa chỉ IP thay vì tên miền",
   url_punycode: "Tên miền dùng ký tự giả mạo (punycode)",
   url_suspicious_tld: "Tên miền có đuôi thường bị dùng để lừa đảo",
+  url_obfuscated: "Link bị viết lách (như [.] hay hxxp) để né bộ lọc",
+  url_brand_impersonation: "Tên miền giả danh ngân hàng, ví điện tử hoặc cơ quan nhà nước",
   url_blocklisted: "Link nằm trong danh sách tên miền lừa đảo đã được cảnh báo",
   matches_known_scam_template: "Nội dung trùng với mẫu tin lừa đảo đã được cảnh báo",
 });
@@ -51,4 +53,21 @@ export const REPORT_LABEL_TEXT = Object.freeze({
   [LABELS.scam]: "Lừa đảo",
   [LABELS.spam]: "Quảng cáo",
   [LABELS.normal]: "Bình thường",
+});
+
+export const PAGE_SCAN_TEXT = Object.freeze({
+  messageWarningTitle: "⚠️ Tin nhắn có dấu hiệu lừa đảo",
+  dangerousLinkTitle: "⚠️ Scambodia: link nguy hiểm",
+  suspiciousLinkTitle: "Scambodia: link đáng ngờ",
+  dangerousLinkConfirm: "Scambodia cảnh báo: link này có dấu hiệu lừa đảo. Bạn vẫn muốn mở?",
+  showMessage: "Xem tin",
+  dismiss: "Đóng cảnh báo",
+  optionsHeading: "Tự động kiểm tra trên trang chat",
+  optionsHint:
+    "Chỉ chạy trên các trang bạn bật. Extension kiểm tra link trên trang và tin nhắn mới hiện ra; số điện thoại, số tài khoản, OTP, email được che ngay trên máy trước khi gửi đi; link chỉ gửi tên miền và đường dẫn. Tên người và địa chỉ không được che.",
+  customSiteLabel: "Thêm trang khác (https://…)",
+  addSite: "Thêm",
+  invalidSite: "Địa chỉ trang phải bắt đầu bằng https://",
+  siteEnabled: "Đã bật tự động kiểm tra.",
+  siteDisabled: "Đã tắt tự động kiểm tra.",
 });

@@ -1,5 +1,6 @@
 using ScamDetector.Api.Classifications;
 using ScamDetector.Api.ErrorHandling;
+using ScamDetector.Api.Links;
 using ScamDetector.Api.RateLimiting;
 using ScamDetector.Api.Reports;
 using ScamDetector.Core.Classification;
@@ -29,6 +30,7 @@ app.UseClientRateLimiting(rateLimitOptions);
 
 app.MapHealthChecks(HealthCheckRegistration.HealthRoute);
 app.MapClassificationEndpoints();
+app.MapLinkInspectionEndpoints();
 app.MapReportEndpoints();
 
 await app.Services.ApplyMigrationsIfConfiguredAsync(app.Lifetime.ApplicationStopping);

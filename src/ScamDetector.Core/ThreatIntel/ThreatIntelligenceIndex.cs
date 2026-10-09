@@ -8,6 +8,7 @@ public sealed class ThreatIntelligenceIndex : IThreatIntelligence
     private const char LabelSeparator = '.';
 
     private readonly HashSet<string> _blockedDomains;
+    private readonly HashSet<string> _officialDomains;
     private readonly List<(string Id, IReadOnlySet<string> Shingles)> _templates;
     private readonly Dictionary<string, List<int>> _templatesByShingle = new(StringComparer.Ordinal);
     private readonly double _minimumCoverage;
@@ -15,9 +16,11 @@ public sealed class ThreatIntelligenceIndex : IThreatIntelligence
     public ThreatIntelligenceIndex(
         IEnumerable<string> blockedDomains,
         IEnumerable<ScamTemplateEntry> templates,
-        double minimumCoverage = DefaultMinimumCoverage)
+        double minimumCoverage = DefaultMinimumCoverage,
+        IEnumerable<string>? officialDomains = null)
     {
-        _blockedDomains = blockedDomains.Select(domain => domain.Trim().ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
+        _blockedDomains = ToDomainSet(blockedDomains);
+        _officialDomains = ToDomainSet(officialDomains ?? []);
         _templates = templates.Select(template => (template.Id, TemplateShingles.Build(template.Text))).ToList();
         _minimumCoverage = minimumCoverage;
         IndexShingles();
@@ -29,23 +32,41 @@ public sealed class ThreatIntelligenceIndex : IThreatIntelligence
 
     public int TemplateCount => _templates.Count;
 
+    public int OfficialDomainCount => _officialDomains.Count;
+
     public ThreatMatch Match(string normalizedText, string maskedText)
     {
-        var domains = UrlExtractor.Extract(normalizedText)
-            .Select(UrlHost.Parse)
-            .OfType<string>()
+        var links = UrlExtractor.Extract(normalizedText)
+            .Select(url => (Url: url, Host: UrlHost.Parse(url)))
+            .Where(link => link.Host is not null)
+            .Select(link => (link.Url, Host: link.Host!))
+            .ToList();
+        var blockedDomains = links
+            .Select(link => link.Host)
             .Where(IsBlocked)
             .Distinct(StringComparer.Ordinal)
             .ToList();
-        return new ThreatMatch(domains, BestTemplate(maskedText));
+        var brandImpersonations = links
+            .Where(link => !IsBlocked(link.Host) && BrandImpersonation.IsImpersonating(link.Host, IsOfficial))
+            .Select(link => new UrlFinding(link.Url, UrlReasons.BrandImpersonation))
+            .Distinct()
+            .ToList();
+        return new ThreatMatch(blockedDomains, BestTemplate(maskedText)) { BrandImpersonations = brandImpersonations };
     }
 
-    public bool IsBlocked(string host)
+    public bool IsBlocked(string host) => MatchesDomainOrParent(host, _blockedDomains);
+
+    public bool IsOfficial(string host) => MatchesDomainOrParent(host, _officialDomains);
+
+    private static bool MatchesDomainOrParent(string host, HashSet<string> domains)
     {
         var labels = host.TrimEnd(LabelSeparator).Split(LabelSeparator);
         return Enumerable.Range(0, labels.Length - 1)
-            .Any(start => _blockedDomains.Contains(string.Join(LabelSeparator, labels[start..])));
+            .Any(start => domains.Contains(string.Join(LabelSeparator, labels[start..])));
     }
+
+    private static HashSet<string> ToDomainSet(IEnumerable<string> domains) =>
+        domains.Select(domain => domain.Trim().ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
 
     private void IndexShingles()
     {

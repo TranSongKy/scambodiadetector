@@ -161,8 +161,8 @@ curl -X POST http://localhost:8080/api/v1/classifications \
 | Trường | Ý nghĩa |
 |---|---|
 | `label` | `scam`, `spam` hoặc `normal`. Kết luận `scam` khi xác suất ≥ `Classification:ScamThreshold` (mặc định 0.7), hoặc khi tin có link thuộc danh sách tên miền lừa đảo, hoặc trùng văn mẫu lừa đảo đã biết (xem [Cập nhật dữ liệu lừa đảo](#cập-nhật-dữ-liệu-lừa-đảo)) |
-| `confidence` | Xác suất của nhãn được chọn (khi trùng danh sách chặn: 0.99; khi trùng văn mẫu: tỉ lệ trùng nếu cao hơn xác suất model) |
-| `reasons` | `model_predicted_scam`, `model_predicted_spam`, `scam_probability_below_threshold`, `url_shortener`, `url_ip_address_host`, `url_punycode`, `url_suspicious_tld`, `url_blocklisted`, `matches_known_scam_template` |
+| `confidence` | Xác suất của nhãn được chọn. Với `scam`: xác suất của model đã cộng rủi ro từ link (quyết định 025); khi trùng danh sách chặn: 0.99; khi trùng văn mẫu: tỉ lệ trùng nếu cao hơn |
+| `reasons` | `model_predicted_scam`, `model_predicted_spam`, `scam_probability_below_threshold`, `url_shortener`, `url_ip_address_host`, `url_punycode`, `url_suspicious_tld`, `url_obfuscated`, `url_brand_impersonation`, `url_blocklisted`, `matches_known_scam_template` |
 
 Lỗi trả về theo RFC 9457 (`application/problem+json`):
 
@@ -196,6 +196,20 @@ REPORTS_API_KEY=<key> python scripts/export_reports.py data/raw/reports_review.c
 
 File xuất có `source = contributed`, `annotator` để trống; duyệt và sửa nhãn rồi đưa qua `scripts/anonymize.py` như dữ liệu thô khác.
 
+### `POST /api/v1/link-inspections`
+
+Kiểm tra nhanh nhiều link một lúc (tối đa 50, mỗi link tối đa 500 ký tự để vừa giới hạn 32 KB của body), không gọi model AI. Extension dùng endpoint này để tô màu link trên trang chat.
+
+```bash
+curl -s localhost:8080/api/v1/link-inspections -H 'content-type: application/json' \
+  -d '{"urls":["https://vtp-vandon.online/don","https://bit.ly/abc","https://vietcombank.com.vn"]}'
+# {"results":[{"url":"https://vtp-vandon.online/don","verdict":"dangerous","reasons":["url_blocklisted","url_suspicious_tld"]},
+#             {"url":"https://bit.ly/abc","verdict":"suspicious","reasons":["url_shortener"]},
+#             {"url":"https://vietcombank.com.vn","verdict":"safe","reasons":[]}]}
+```
+
+`verdict`: `dangerous` (trong danh sách chặn, hoặc rủi ro link đạt ngưỡng `Classification:ScamThreshold`), `suspicious` (có dấu hiệu nhưng chưa đủ ngưỡng), `safe`. Lỗi 400 có `code`: `link_inspection.no_links`, `link_inspection.too_many_links`, `link_inspection.invalid_link`.
+
 ### `GET /health`
 
 `200 Healthy` khi PhoBERT đã nạp, hoặc khi đang dùng LLM và Ollama trả lời được với model đã `pull`; ngược lại `503 Unhealthy`.
@@ -219,6 +233,10 @@ Bấm biểu tượng extension để mở **bảng kiểm tra bên cạnh trang
 - **Dán ảnh chụp màn hình** (Ctrl+V), kéo thả ảnh, hoặc chọn file. Extension đọc chữ trong ảnh ngay trên máy (OCR tiếng Việt, cả ảnh nền tối), điền vào ô để người dùng sửa nếu cần, rồi mới gửi **phần chữ** lên API. Ảnh không bao giờ rời khỏi máy.
 - Trên trang web bất kỳ: **bôi đen** tin nhắn → chuột phải → **Kiểm tra tin nhắn này có lừa đảo không**, bảng bên cạnh mở ra và tự kiểm tra.
 - Dưới kết quả có nút báo lại nhãn đúng (gửi tới `/api/v1/reports`).
+- **Tự động kiểm tra trên trang chat** (Cài đặt của extension): bật cho từng trang (có sẵn Messenger, Facebook, Zalo Web, Telegram Web, Gmail, hoặc thêm trang khác bằng `https://…`). Chrome hỏi quyền đúng trang đó khi bật. Trên trang đã bật:
+  - Link dẫn ra ngoài được kiểm tra qua `/api/v1/link-inspections`: link nguy hiểm có viền đỏ và hỏi lại trước khi mở, link đáng ngờ có viền cam; di chuột để xem lý do.
+  - Tin nhắn **mới** hiện ra được kiểm tra qua `/api/v1/classifications`; tin lừa đảo hiện thẻ cảnh báo ở góc dưới phải, bấm **Xem tin** để cuộn tới tin đó. Tin có sẵn trước khi bật và ô đang soạn không bị gửi đi.
+  - Số điện thoại, số tài khoản, OTP, CCCD, email được che ngay trên máy (`src/masking.js`, kiểm tra chéo với `tests/shared/masking-cases.json`) trước khi gửi; link được giữ để API kiểm tra. Giới hạn 1 yêu cầu mỗi 3 giây, gặp 429 thì dừng 1 phút.
 
 Cài đặt khi phát triển:
 

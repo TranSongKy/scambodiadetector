@@ -7,14 +7,18 @@ public sealed class RuleBasedUrlInspector : IUrlInspector
     public Task<IReadOnlyList<UrlFinding>> InspectAsync(string normalizedText, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var literalUrls = UrlExtractor.ExtractLiteral(normalizedText).ToHashSet(StringComparer.Ordinal);
         IReadOnlyList<UrlFinding> findings = UrlExtractor.Extract(normalizedText)
-            .SelectMany(InspectUrl)
+            .SelectMany(url => InspectUrl(url, isObfuscated: !literalUrls.Contains(url)))
             .ToList();
         return Task.FromResult(findings);
     }
 
-    private static IEnumerable<UrlFinding> InspectUrl(string url)
+    private static IEnumerable<UrlFinding> InspectUrl(string url, bool isObfuscated)
     {
+        if (isObfuscated)
+            yield return new UrlFinding(url, UrlReasons.Obfuscated);
+
         var host = UrlHost.Parse(url);
         if (host is null)
             yield break;

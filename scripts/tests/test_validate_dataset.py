@@ -42,6 +42,12 @@ class HasUrlTests(unittest.TestCase):
     def test_plain_text_has_no_url(self) -> None:
         self.assertFalse(has_url("Mai hop nhom nhe"))
 
+    def test_obfuscated_link_counts_as_url(self) -> None:
+        self.assertTrue(has_url("Tra cuu tai vtp-vandon[.]online ngay"))
+
+    def test_obfuscated_link_is_reported_as_unmasked_pii(self) -> None:
+        self.assertIn("url", find_pii("Vao hxxps://x-y[.]com/a de nhan"))
+
 
 class ValidateDatasetTests(unittest.TestCase):
     def setUp(self) -> None:

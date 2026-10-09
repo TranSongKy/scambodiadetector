@@ -202,5 +202,17 @@
   {
     "input": "VCB.COM.VN thong bao",
     "expected": "<URL> thong bao"
+  },
+  {
+    "input": "Tra cuu tai vtp-vandon[.]online ngay",
+    "expected": "Tra cuu tai <URL> ngay"
+  },
+  {
+    "input": "Vao hxxps://x-y[.]com/a de nhan",
+    "expected": "Vao <URL> de nhan"
+  },
+  {
+    "input": "Gap nhau (chieu nay) nhe",
+    "expected": "Gap nhau (chieu nay) nhe"
   }
 ]

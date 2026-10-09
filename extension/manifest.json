@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Scambodia Detector",
-  "description": "Kiểm tra tin nhắn hoặc ảnh chụp màn hình tiếng Việt có dấu hiệu lừa đảo hay không.",
-  "version": "0.2.0",
+  "description": "Kiểm tra tin nhắn, ảnh chụp màn hình và trang chat tiếng Việt có dấu hiệu lừa đảo hay không.",
+  "version": "0.3.0",
   "minimum_chrome_version": "127",
   "permissions": [
     "contextMenus",
+    "scripting",
     "storage",
     "sidePanel"
   ],

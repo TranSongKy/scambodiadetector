@@ -25,7 +25,7 @@ public sealed class ClassificationEndpointsTests
         var body = await response.Content.ReadFromJsonAsync<ClassificationResponse>(CancellationToken.None);
         Assert.NotNull(body);
         Assert.Equal(MessageLabelNames.Scam, body.Label);
-        Assert.Equal(0.9, body.Confidence);
+        Assert.Equal(UrlRisk.CombineWithModel(0.9, UrlRisk.ShortenerWeight), body.Confidence, precision: 10);
         Assert.Contains(ClassificationReasons.ModelPredictedScam, body.Reasons);
         Assert.Contains(UrlReasons.Shortener, body.Reasons);
     }

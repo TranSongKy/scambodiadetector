@@ -39,6 +39,45 @@ public sealed class ThreatIntelLoaderTests
     }
 
     [Fact]
+    public void Load_AllowedDomains_MarksThemAndTheirSubdomainsOfficial()
+    {
+        using var directory = new TemporaryDirectory();
+        directory.WriteFile(ThreatIntelFiles.AllowedDomains, "domain,note\nvietcombank.com.vn,\n", WriteTime);
+
+        var index = ThreatIntelLoader.Load(directory.Path, ThreatIntelligenceIndex.DefaultMinimumCoverage);
+
+        Assert.Equal(1, index.OfficialDomainCount);
+        Assert.True(index.IsOfficial("vcbdigibank.vietcombank.com.vn"));
+        Assert.Empty(index.Match("Vào https://vietcombank.com.vn/login", "Vào <URL>").BrandImpersonations);
+        Assert.Single(index.Match("Vào https://vietcombank-login.com", "Vào <URL>").BrandImpersonations);
+    }
+
+    [Fact]
+    public void LatestWriteTimeUtc_AllowedDomainsChanged_ReturnsItsWriteTime()
+    {
+        using var directory = new TemporaryDirectory();
+        var laterWriteTime = WriteTime.AddHours(1);
+        directory.WriteFile(ThreatIntelFiles.BlockedDomains, "domain\n", WriteTime);
+        directory.WriteFile(ThreatIntelFiles.AllowedDomains, "domain,note\n", laterWriteTime);
+
+        Assert.Equal(laterWriteTime, ThreatIntelLoader.LatestWriteTimeUtc(directory.Path));
+    }
+
+    [Fact]
+    public void Load_RepositoryAllowedDomains_NoneLooksLikeImpersonation()
+    {
+        var repositoryDataDirectory = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "data", "threat-intel"));
+        var index = ThreatIntelLoader.Load(repositoryDataDirectory, ThreatIntelligenceIndex.DefaultMinimumCoverage);
+        var allowedDomains = File.ReadAllLines(Path.Combine(repositoryDataDirectory, ThreatIntelFiles.AllowedDomains))
+            .Skip(1)
+            .Select(line => line.Split(',')[0])
+            .Where(domain => domain.Length > 0);
+
+        Assert.All(allowedDomains, domain => Assert.Empty(index.Match($"https://{domain}/", "<URL>").BrandImpersonations));
+    }
+
+    [Fact]
     public void Load_RepositoryDataDirectory_FilesExistAndParse()
     {
         var repositoryDataDirectory = Path.GetFullPath(

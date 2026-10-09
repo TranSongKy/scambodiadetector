@@ -13,6 +13,9 @@ public sealed class MessageClassifierTests
     private const string UnaccentedText = "Tai khoan cua ban bi khoa";
     private const string UrlReason = "url_shortener";
 
+    private static readonly UrlFinding BrandFinding = new("http://bidv-xacthuc.com", UrlReasons.BrandImpersonation);
+    private static readonly UrlFinding ObfuscatedFinding = new("vtp-vandon.online", UrlReasons.Obfuscated);
+
     private readonly FakeScamModel _model = new(PredictionFactory.Create(normal: 0.1, spam: 0.1, scam: 0.8));
     private readonly FakeUrlInspector _urlInspector = new([new UrlFinding("http://a.example", UrlReason)]);
 
@@ -181,7 +184,7 @@ public sealed class MessageClassifierTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(MessageLabel.Scam, result.Value.Label);
-        Assert.Equal(0.8, result.Value.Confidence);
+        Assert.Equal(UrlRisk.CombineWithModel(0.8, UrlRisk.ShortenerWeight), result.Value.Confidence, precision: 10);
         Assert.Equal([ClassificationReasons.ModelPredictedScam, UrlReason], result.Value.Reasons);
     }
 
@@ -342,5 +345,143 @@ public sealed class MessageClassifierTests
 
         Assert.Equal(MessageLabel.Scam, result.Value.Label);
         Assert.Contains(ThreatReasons.BlocklistedDomain, result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ThreatBrandImpersonation_AddsFindingReasonToResult()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.3, spam: 0.2, scam: 0.5));
+        var threat = new FakeThreatIntelligence(ThreatMatch.None with { BrandImpersonations = [BrandFinding] });
+        var classifier = new MessageClassifier(model, new FakeUrlInspector([]), new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+        Assert.Equal(0.8, result.Value.Confidence, precision: 10);
+        Assert.Equal([UrlReasons.BrandImpersonation], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_InspectorFindingAndThreatBrandImpersonation_ReportsInspectorReasonFirst()
+    {
+        var threat = new FakeThreatIntelligence(ThreatMatch.None with { BrandImpersonations = [BrandFinding] });
+        var classifier = new MessageClassifier(_model, _urlInspector, new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal([ClassificationReasons.ModelPredictedScam, UrlReason, UrlReasons.BrandImpersonation], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndHighUrlRisk_DoesNotCallModelAndReturnsScam()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 1, spam: 0, scam: 0), isAvailable: false);
+        var inspector = new FakeUrlInspector([ObfuscatedFinding]);
+        var threat = new FakeThreatIntelligence(ThreatMatch.None with { BrandImpersonations = [BrandFinding] });
+        var classifier = new MessageClassifier(model, inspector, new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(0, model.CallCount);
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+        Assert.Equal(UrlRisk.Combine([ObfuscatedFinding, BrandFinding]), result.Value.Confidence, precision: 10);
+        Assert.Equal([UrlReasons.Obfuscated, UrlReasons.BrandImpersonation], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndRiskExactlyAtThreshold_DoesNotCallModel()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 1, spam: 0, scam: 0), isAvailable: false);
+        var options = new ClassificationOptions { ScamThreshold = UrlRisk.BrandImpersonationWeight };
+        var threat = new FakeThreatIntelligence(ThreatMatch.None with { BrandImpersonations = [BrandFinding] });
+        var classifier = new MessageClassifier(model, new FakeUrlInspector([]), options, threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(0, model.CallCount);
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndLowUrlRisk_StillCallsModel()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05), isAvailable: false);
+        var classifier = new MessageClassifier(model, _urlInspector, new ClassificationOptions());
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(1, model.CallCount);
+        Assert.Equal(MessageLabel.Normal, result.Value.Label);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelAvailableAndHighUrlRisk_StillCallsModel()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05));
+        var inspector = new FakeUrlInspector([ObfuscatedFinding, BrandFinding]);
+        var classifier = new MessageClassifier(model, inspector, new ClassificationOptions());
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal(1, model.CallCount);
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_StrongThreatAndBrandImpersonation_IncludesBrandReasonInThreatResult()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.9, spam: 0.05, scam: 0.05));
+        var threat = new FakeThreatIntelligence(
+            new ThreatMatch(["bad.example"], null) { BrandImpersonations = [BrandFinding] });
+        var classifier = new MessageClassifier(model, new FakeUrlInspector([]), new ClassificationOptions(), threat);
+
+        var result = await classifier.ClassifyAsync(AccentedText, CancellationToken.None);
+
+        Assert.Equal([ThreatReasons.BlocklistedDomain, UrlReasons.BrandImpersonation], result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_RealIndexWithLookalikeLink_ReturnsScamForNeutralModel()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 0.3, spam: 0.2, scam: 0.5));
+        var index = new ThreatIntelligenceIndex([], [], officialDomains: ["vietcombank.com.vn"]);
+        var classifier = new MessageClassifier(model, new FakeUrlInspector([]), new ClassificationOptions(), index);
+
+        var result = await classifier.ClassifyAsync("Xác thực tại http://vietcombank-xacthuc.com/x", CancellationToken.None);
+
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
+        Assert.Contains(UrlReasons.BrandImpersonation, result.Value.Reasons);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_InvisibleCharactersInText_PassesCleanedTextToInspector()
+    {
+        var classifier = CreateClassifier();
+
+        await classifier.ClassifyAsync("vtp​-vandon.online", CancellationToken.None);
+
+        Assert.Equal("vtp-vandon.online", _urlInspector.ReceivedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ObfuscatedLink_PassesUrlPlaceholderToModel()
+    {
+        var classifier = CreateClassifier();
+
+        await classifier.ClassifyAsync("Tra cuu tai vtp-vandon[.]online ngay", CancellationToken.None);
+
+        Assert.Equal("Tra cuu tai <URL> ngay", _model.ReceivedText);
+    }
+
+    [Fact]
+    public async Task ClassifyAsync_ModelUnavailableAndUrlRiskEqualsThresholdWithinRounding_ReturnsScam()
+    {
+        var model = new FakeScamModel(PredictionFactory.Create(normal: 1, spam: 0, scam: 0), isAvailable: false);
+        var options = new ClassificationOptions { ScamThreshold = UrlRisk.WeightOf(UrlReasons.Obfuscated) + 1e-12 };
+        var classifier = new MessageClassifier(model, new FakeUrlInspector([ObfuscatedFinding]), options);
+
+        var result = await classifier.ClassifyAsync("vtp-vandon[.]online", CancellationToken.None);
+
+        Assert.Equal(MessageLabel.Scam, result.Value.Label);
     }
 }

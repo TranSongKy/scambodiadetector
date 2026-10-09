@@ -1,5 +1,6 @@
 import {
   CLASSIFICATIONS_PATH,
+  LINK_INSPECTIONS_PATH,
   LOOPBACK_HOSTS,
   MAX_MESSAGE_LENGTH,
   REPORT_CHANNEL,
@@ -21,7 +22,16 @@ const PROBLEM_CODE_MESSAGES = Object.freeze({
 const PERCENT = 100;
 const SCAM_LABEL = "scam";
 
-export class ClassificationError extends Error {}
+export class ClassificationError extends Error {
+  constructor(message, status = null) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export function isRateLimited(error) {
+  return error instanceof ClassificationError && error.status === HTTP_TOO_MANY_REQUESTS;
+}
 
 export function validateText(text) {
   const trimmed = (text ?? "").trim();
@@ -84,7 +94,7 @@ async function postJson(url, body, fetchImplementation, timeoutMs) {
     throw new ClassificationError(error?.name === "TimeoutError" ? ERROR_MESSAGES.timeout : ERROR_MESSAGES.network);
   }
   if (!response.ok) {
-    throw new ClassificationError(await problemMessage(response));
+    throw new ClassificationError(await problemMessage(response), response.status);
   }
   return response.json();
 }
@@ -96,4 +106,8 @@ export async function classify(apiBaseUrl, text, fetchImplementation = fetch, ti
 export async function report(apiBaseUrl, text, label, fetchImplementation = fetch, timeoutMs = REQUEST_TIMEOUT_MS) {
   const body = { text, label, channel: REPORT_CHANNEL };
   return (await postJson(apiBaseUrl + REPORTS_PATH, body, fetchImplementation, timeoutMs)).id;
+}
+
+export async function inspectLinks(apiBaseUrl, urls, fetchImplementation = fetch, timeoutMs = REQUEST_TIMEOUT_MS) {
+  return (await postJson(apiBaseUrl + LINK_INSPECTIONS_PATH, { urls }, fetchImplementation, timeoutMs)).results;
 }

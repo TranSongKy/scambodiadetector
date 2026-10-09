@@ -39,12 +39,12 @@ Chuẩn hoá văn bản
 
 **Việc của người dùng:** cài Ollama trên máy, `ollama pull qwen2.5:3b`, chạy lại API và thử các tin không có link.
 
-### GĐ2. Link sâu hơn
+### GĐ2. Link sâu hơn (đã làm phần giả thương hiệu, link viết lách, gộp rủi ro — quyết định 025)
 
 | Việc | Cách làm | Mã lý do mới (cần duyệt) |
 |---|---|---|
 | Giả mạo thương hiệu | File `data/threat-intel/official_brands.csv` (tên miền chính thức của ngân hàng, cơ quan nhà nước, ví điện tử, sàn TMĐT, nhà mạng, bưu chính). Link chứa tên thương hiệu nhưng không thuộc tên miền chính thức (`vietcombank-xacthuc.com`), hoặc gần giống chữ (`vietcornbank.com`, ký tự Unicode giống chữ Latin) thì bị gắn cờ. Logic thuần trong Core, có test. | `url_brand_impersonation` |
-| Tên miền mới đăng ký | Tra ngày đăng ký qua RDAP, cache theo tên miền, timeout ngắn; tra lỗi thì bỏ qua, không chặn kết luận. Tên miền dưới 30 ngày tuổi bị gắn cờ. | `url_newly_registered` |
+| Tên miền mới đăng ký (chưa làm) | Tra ngày đăng ký qua RDAP, cache theo tên miền, timeout ngắn; tra lỗi thì bỏ qua, không chặn kết luận. Tên miền dưới 30 ngày tuổi bị gắn cờ. | `url_newly_registered` |
 | Đưa tín hiệu link vào kết luận | Hiện các lý do `url_*` chỉ để hiển thị. Thêm bước gộp: model nói "không chắc" + link đáng ngờ thì nâng lên lừa đảo. Ngưỡng chỉnh bằng tập đánh giá ở GĐ5. | — |
 
 Không làm: mở link rút gọn để xem đích. Việc này có rủi ro máy chủ bị lợi dụng gọi vào mạng nội bộ (SSRF) và kẻ gian biết link đã bị kiểm tra; chỉ cân nhắc sau, với danh sách cho phép.
@@ -76,7 +76,7 @@ Không làm: mở link rút gọn để xem đích. Việc này có rủi ro má
 |---|---|---|
 | 1 | GĐ1 | Xong: có kết luận cho mọi tin |
 | 2 | GĐ5 bước 1 (tập đánh giá) | Chưa đo thì không biết LLM đúng hay sai; mọi ngưỡng sau đều dựa vào nó |
-| 3 | GĐ2 | Link là dấu hiệu lừa đảo phổ biến nhất, làm được bằng logic thuần, ít rủi ro |
+| 3 | GĐ2 | Xong phần chính; còn tra tuổi tên miền (RDAP) |
 | 4 | GĐ5 bước 2–3 | Giảm phụ thuộc LLM, tăng tốc độ |
 | 5 | GĐ3 | Cần quyết định về quyền riêng tư và nguồn dữ liệu |
 | 6 | GĐ4 | Extension đã đọc được ảnh; bot là kênh phụ |

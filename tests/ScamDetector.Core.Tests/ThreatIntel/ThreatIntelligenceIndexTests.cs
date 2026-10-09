@@ -1,6 +1,7 @@
 using System.Text;
 using ScamDetector.Core.Text;
 using ScamDetector.Core.ThreatIntel;
+using ScamDetector.Core.Urls;
 
 namespace ScamDetector.Core.Tests.ThreatIntel;
 
@@ -312,5 +313,143 @@ public sealed class ThreatIntelligenceIndexTests
         var blocked = DomainIndex().IsBlocked("x.bad.example.");
 
         Assert.True(blocked);
+    }
+
+    private const string OfficialDomain = "vietcombank.com.vn";
+
+    private static ThreatIntelligenceIndex BrandIndex(
+        IEnumerable<string>? blockedDomains = null,
+        IEnumerable<string>? officialDomains = null) =>
+        new(blockedDomains ?? [], [], officialDomains: officialDomains ?? [OfficialDomain]);
+
+    [Theory]
+    [InlineData("vietcombank.com.vn")]
+    [InlineData("www.vietcombank.com.vn")]
+    [InlineData("vcbdigibank.vietcombank.com.vn")]
+    public void IsOfficial_ExactOrSubdomain_ReturnsTrue(string host)
+    {
+        var index = BrandIndex();
+
+        Assert.True(index.IsOfficial(host));
+    }
+
+    [Theory]
+    [InlineData("vietcombank.com")]
+    [InlineData("notvietcombank.com.vn")]
+    [InlineData("vietcombank.com.vn.evil.example")]
+    [InlineData("com.vn")]
+    public void IsOfficial_OtherHost_ReturnsFalse(string host)
+    {
+        var index = BrandIndex();
+
+        Assert.False(index.IsOfficial(host));
+    }
+
+    [Fact]
+    public void IsOfficial_NoOfficialDomains_ReturnsFalse()
+    {
+        var index = new ThreatIntelligenceIndex([], []);
+
+        Assert.False(index.IsOfficial(OfficialDomain));
+    }
+
+    [Fact]
+    public void OfficialDomainCount_PaddedAndDuplicateEntries_CountsDistinctNormalizedDomains()
+    {
+        var index = BrandIndex(officialDomains: [" VietcomBank.com.vn ", OfficialDomain, "bidv.com.vn"]);
+
+        Assert.Equal(2, index.OfficialDomainCount);
+    }
+
+    [Fact]
+    public void Match_BrandLookalikeNotBlocked_ReturnsBrandImpersonationFinding()
+    {
+        var match = MatchText(BrandIndex(), "Nhấn http://vietcombank-xacthuc.com/x để xác thực");
+
+        Assert.Equal(
+            [new UrlFinding("http://vietcombank-xacthuc.com/x", UrlReasons.BrandImpersonation)],
+            match.BrandImpersonations);
+        Assert.False(match.IsStrongSignal);
+    }
+
+    [Fact]
+    public void Match_BrandLookalikeWithoutOfficialDomains_ReturnsBrandImpersonationFinding()
+    {
+        var index = new ThreatIntelligenceIndex([], []);
+
+        var match = MatchText(index, "Nhấn http://bidv-xacthuc.com/x");
+
+        Assert.Single(match.BrandImpersonations);
+    }
+
+    [Fact]
+    public void Match_BlockedBrandLookalike_ReturnsBlocklistedAndNoImpersonation()
+    {
+        var index = BrandIndex(blockedDomains: ["vietcombank-xacthuc.com"]);
+
+        var match = MatchText(index, "Nhấn http://vietcombank-xacthuc.com/x");
+
+        Assert.Equal(["vietcombank-xacthuc.com"], match.BlocklistedDomains);
+        Assert.Empty(match.BrandImpersonations);
+    }
+
+    [Theory]
+    [InlineData("Nhấn https://vcbdigibank.vietcombank.com.vn/login")]
+    [InlineData("Nhấn https://www.vietcombank.com.vn")]
+    public void Match_OfficialBrandLink_ReturnsNoImpersonation(string text)
+    {
+        var match = MatchText(BrandIndex(), text);
+
+        Assert.Empty(match.BrandImpersonations);
+    }
+
+    [Fact]
+    public void Match_NonBrandLink_ReturnsNoImpersonation()
+    {
+        var match = MatchText(BrandIndex(), "Nhấn https://thanhnien.vn/tin-tuc");
+
+        Assert.Empty(match.BrandImpersonations);
+    }
+
+    [Fact]
+    public void Match_SameLookalikeLinkTwice_ReturnsSingleFinding()
+    {
+        var match = MatchText(BrandIndex(), "http://bidv-xacthuc.com/x và http://bidv-xacthuc.com/x");
+
+        Assert.Single(match.BrandImpersonations);
+    }
+
+    [Fact]
+    public void Match_TwoDifferentLookalikeLinks_ReturnsBothFindings()
+    {
+        var match = MatchText(BrandIndex(), "http://bidv-xacthuc.com và http://zalo-verify.top");
+
+        Assert.Equal(2, match.BrandImpersonations.Count);
+    }
+
+    [Fact]
+    public void Match_ObfuscatedBlockedLink_ReturnsBlockedDomain()
+    {
+        var index = BrandIndex(blockedDomains: ["vtp-vandon.online"]);
+
+        var match = MatchText(index, "Nhấn vtp-vandon[.]online để nhận hàng");
+
+        Assert.Equal(["vtp-vandon.online"], match.BlocklistedDomains);
+    }
+
+    [Fact]
+    public void Match_DefangedBlockedLink_ReturnsBlockedDomain()
+    {
+        var match = MatchText(DomainIndex(), "Nhấn hxxps://bad.example/x");
+
+        Assert.Equal([BlockedDomain], match.BlocklistedDomains);
+    }
+
+    [Fact]
+    public void Match_TextWithoutLink_ReturnsNoImpersonation()
+    {
+        var match = MatchText(BrandIndex(), "Tài khoản vietcombank của bạn bị khóa");
+
+        Assert.Empty(match.BrandImpersonations);
     }
 }

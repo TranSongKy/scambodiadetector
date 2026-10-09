@@ -112,4 +112,55 @@ public sealed class RuleBasedUrlInspectorTests
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => _inspector.InspectAsync("bit.ly/x", source.Token));
     }
+
+    [Fact]
+    public async Task InspectAsync_BracketedDotLink_ReturnsObfuscatedAndSuspiciousTldFindings()
+    {
+        var findings = await _inspector.InspectAsync("xem vtp-vandon[.]online ngay", CancellationToken.None);
+
+        Assert.Equal(
+            [
+                new UrlFinding("vtp-vandon.online", UrlReasons.Obfuscated),
+                new UrlFinding("vtp-vandon.online", UrlReasons.SuspiciousTopLevelDomain),
+            ],
+            findings);
+    }
+
+    [Fact]
+    public async Task InspectAsync_DefangedScheme_ReturnsObfuscatedFinding()
+    {
+        var findings = await _inspector.InspectAsync("xem hxxps://evil.example.com/x ngay", CancellationToken.None);
+
+        Assert.Equal([new UrlFinding("https://evil.example.com/x", UrlReasons.Obfuscated)], findings);
+    }
+
+    [Theory]
+    [InlineData("xem https://a.example/x")]
+    [InlineData("xem fake-shop.vn ngay")]
+    [InlineData("xem bit.ly/abc")]
+    [InlineData("xem vtp-vandon.online")]
+    public async Task InspectAsync_PlainLink_DoesNotReturnObfuscatedFinding(string text)
+    {
+        var findings = await _inspector.InspectAsync(text, CancellationToken.None);
+
+        Assert.DoesNotContain(findings, finding => finding.Reason == UrlReasons.Obfuscated);
+    }
+
+    [Fact]
+    public async Task InspectAsync_OrdinaryBracketedText_ReturnsEmpty()
+    {
+        var findings = await _inspector.InspectAsync("[Thông báo] Gặp nhau (chiều nay) nhé", CancellationToken.None);
+
+        Assert.Empty(findings);
+    }
+
+    [Fact]
+    public async Task InspectAsync_PlainAndObfuscatedLinks_FlagsOnlyObfuscatedOne()
+    {
+        var findings = await _inspector.InspectAsync("bit.ly/abc và vtp-vandon[.]online", CancellationToken.None);
+
+        Assert.Contains(new UrlFinding("vtp-vandon.online", UrlReasons.Obfuscated), findings);
+        Assert.DoesNotContain(new UrlFinding("bit.ly/abc", UrlReasons.Obfuscated), findings);
+        Assert.Contains(new UrlFinding("bit.ly/abc", UrlReasons.Shortener), findings);
+    }
 }

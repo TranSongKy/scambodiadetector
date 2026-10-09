@@ -6,7 +6,9 @@ public static partial class UrlExtractor
 {
     private static readonly char[] TrailingPunctuation = ['.', ',', ';', ':', '!', '?', ')', ']', '}', '"', '\''];
 
-    public static IReadOnlyList<string> Extract(string text) =>
+    public static IReadOnlyList<string> Extract(string text) => ExtractLiteral(UrlDeobfuscator.Restore(text));
+
+    public static IReadOnlyList<string> ExtractLiteral(string text) =>
         UrlPattern().Matches(text)
             .Select(match => match.Value.TrimEnd(TrailingPunctuation))
             .ToList();

@@ -106,4 +106,45 @@ public sealed class TextNormalizerTests
 
         Assert.Equal(once, twice);
     }
+
+    [Theory]
+    [InlineData("vtp​-vandon.online", "vtp-vandon.online")]
+    [InlineData("vtp‌-vandon.online", "vtp-vandon.online")]
+    [InlineData("vtp‍-vandon.online", "vtp-vandon.online")]
+    [InlineData("vtp­-vandon.online", "vtp-vandon.online")]
+    [InlineData("vtp⁠-vandon.online", "vtp-vandon.online")]
+    [InlineData("﻿vtp-vandon.online", "vtp-vandon.online")]
+    [InlineData("v​t‌p‍-­van⁠don﻿.online", "vtp-vandon.online")]
+    public void Normalize_InvisibleCharacters_RemovesThem(string text, string expected)
+    {
+        var result = TextNormalizer.Normalize(text);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void Normalize_OnlyInvisibleCharacters_ReturnsEmpty()
+    {
+        var result = TextNormalizer.Normalize("​‌‍⁠﻿­");
+
+        Assert.Equal(string.Empty, result);
+    }
+
+    [Fact]
+    public void Normalize_InvisibleCharacterBetweenWords_KeepsSingleSpaces()
+    {
+        var result = TextNormalizer.Normalize("Chuyển ​ khoản");
+
+        Assert.Equal("Chuyển khoản", result);
+    }
+
+    [Fact]
+    public void Normalize_InvisibleCharacterInsideDecomposedVietnamese_ReturnsComposedWithoutInvisible()
+    {
+        var text = "Tài khoản".Normalize(NormalizationForm.FormD).Insert(1, "​");
+
+        var result = TextNormalizer.Normalize(text);
+
+        Assert.Equal("Tài khoản", result);
+    }
 }
