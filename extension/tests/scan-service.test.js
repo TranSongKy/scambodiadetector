@@ -5,13 +5,14 @@ import { test } from "node:test";
 import { ClassificationError } from "../src/classification.js";
 import {
   LINK_VERDICTS,
+  MAX_LINK_LENGTH,
   MAX_LINKS_PER_REQUEST,
   RATE_LIMIT_PAUSE_MS,
   SCAN_MESSAGE_TYPES,
   SCAN_MIN_INTERVAL_MS,
 } from "../src/constants.js";
 import { PAGE_SCAN_TEXT, REASON_DESCRIPTIONS } from "../src/messages.js";
-import { createScanService, toLinkWarning } from "../src/scan-service.js";
+import { createScanService, inspectableLink, toLinkWarning } from "../src/scan-service.js";
 
 const API = "http://localhost:8080";
 const SCAM_RESULT = Object.freeze({ isScam: true, confidence: "93%", reasons: ["Có link rút gọn"], advice: "Đừng bấm link" });
@@ -153,3 +154,50 @@ test("the content script uses the same message types and verdicts as the extensi
   assert.ok(contentScript.includes(`"${LINK_VERDICTS.dangerous}"`));
   assert.ok(contentScript.includes(`"${LINK_VERDICTS.suspicious}"`));
 });
+
+test("identical messages arriving together share one API call", async () => {
+  const { service, calls } = createService();
+
+  const [first, second] = await Promise.all([
+    service.checkMessage("Hai tin giong het nhau den cung luc"),
+    service.checkMessage("Hai tin giong het nhau den cung luc"),
+  ]);
+
+  assert.equal(calls.classify.length, 1);
+  assert.equal(first, second);
+});
+
+test("a failed link batch does not lose the results of other batches", async () => {
+  let batches = 0;
+  const { service } = createService({
+    inspect: async (_, urls) => {
+      batches += 1;
+      if (batches === 1) {
+        throw new ClassificationError("too large", 413);
+      }
+      return urls.map((url) => ({ url, verdict: LINK_VERDICTS.safe, reasons: [] }));
+    },
+  });
+  const urls = Array.from({ length: MAX_LINKS_PER_REQUEST + 2 }, (_, index) => `https://site${index}.example/`);
+
+  const warnings = await service.checkLinks(urls);
+
+  assert.equal(warnings.length, 2);
+});
+
+test("inspectableLink keeps only origin and path of web links within the length limit", () => {
+  assert.equal(inspectableLink("https://user:pw@a.example/reset?token=1#x"), "https://a.example/reset");
+  assert.equal(inspectableLink("http://a.example"), "http://a.example/");
+  assert.equal(inspectableLink(`https://a.example/${"x".repeat(MAX_LINK_LENGTH)}`), null);
+  assert.equal(inspectableLink("javascript:alert(1)"), null);
+  assert.equal(inspectableLink(42), null);
+});
+
+test("checkLinks never sends query strings or fragments to the API", async () => {
+  const { service, calls } = createService();
+
+  await service.checkLinks(["https://a.example/reset?token=secret#frag"]);
+
+  assert.deepEqual(calls.inspect[0].urls, ["https://a.example/reset"]);
+});
+

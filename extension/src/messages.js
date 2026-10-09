@@ -64,7 +64,7 @@ export const PAGE_SCAN_TEXT = Object.freeze({
   dismiss: "Đóng cảnh báo",
   optionsHeading: "Tự động kiểm tra trên trang chat",
   optionsHint:
-    "Chỉ chạy trên các trang bạn bật. Extension kiểm tra link trên trang và tin nhắn mới hiện ra; số điện thoại, số tài khoản, OTP, email được che ngay trên máy trước khi gửi đi.",
+    "Chỉ chạy trên các trang bạn bật. Extension kiểm tra link trên trang và tin nhắn mới hiện ra; số điện thoại, số tài khoản, OTP, email được che ngay trên máy trước khi gửi đi; link chỉ gửi tên miền và đường dẫn. Tên người và địa chỉ không được che.",
   customSiteLabel: "Thêm trang khác (https://…)",
   addSite: "Thêm",
   invalidSite: "Địa chỉ trang phải bắt đầu bằng https://",

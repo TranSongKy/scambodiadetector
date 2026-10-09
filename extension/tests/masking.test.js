@@ -21,12 +21,26 @@ test("maskPersonalData masks the same personal data as the backend masker on sha
   }
 });
 
-test("maskPersonalData keeps links so the backend can still inspect them", () => {
+test("maskPersonalData keeps the link host and path so the backend can still inspect them", () => {
+  assert.equal(maskPersonalData("Tra cuu tai https://vtp-vandon.online/don/tra-cuu ngay"), "Tra cuu tai https://vtp-vandon.online/don/tra-cuu ngay");
+});
+
+test("maskPersonalData removes query, fragment, credentials and numbers inside links", () => {
   assert.equal(
-    maskPersonalData("Goi 0901234567 hoac vao https://vcb-xacminh.top/0901234567 ngay"),
-    "Goi <PHONE> hoac vao https://vcb-xacminh.top/0901234567 ngay",
+    maskPersonalData("Vao https://user:pass@vcb-xacminh.top/reset?token=abc&email=a#x ngay"),
+    "Vao https://vcb-xacminh.top/reset ngay",
   );
-  assert.equal(maskPersonalData("Tra cuu tai vtp-vandon.online/don/123456789012"), "Tra cuu tai vtp-vandon.online/don/123456789012");
+  assert.equal(maskPersonalData("Nhan tin zalo.me/0912345678 nhe"), "Nhan tin zalo.me/<ACCOUNT> nhe");
+  assert.equal(maskPersonalData("Xem vtp-vandon.online/don/123456789012"), "Xem vtp-vandon.online/don/<ACCOUNT>");
+});
+
+test("maskPersonalData removes invisible characters before masking like the backend", () => {
+  assert.equal(maskPersonalData("Goi 0912\u200b345678 ngay"), "Goi <PHONE> ngay");
+});
+
+test("maskPersonalData is not confused by NUL characters already in the text", () => {
+  assert.equal(maskPersonalData("a\u00000\u0000b"), "a0b");
+  assert.equal(maskPersonalData("\u00000\u0000 https://a.example/x"), "0 https://a.example/x");
 });
 
 test("maskPersonalData masks email before links so the domain inside an email is not kept", () => {

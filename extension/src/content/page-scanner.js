@@ -14,7 +14,7 @@
   const VERDICT_ATTRIBUTE = "data-scambodia-verdict";
   const OWN_UI_ATTRIBUTE = "data-scambodia";
   const OWN_UI_SELECTOR = `[${OWN_UI_ATTRIBUTE}]`;
-  const IGNORED_SELECTOR = `input, textarea, select, script, style, noscript, [contenteditable=""], [contenteditable="true"], ${OWN_UI_SELECTOR}`;
+  const IGNORED_SELECTOR = `input, textarea, select, script, style, noscript, [contenteditable]:not([contenteditable="false"]), [role="textbox"], ${OWN_UI_SELECTOR}`;
   const MIN_MESSAGE_LENGTH = 20;
   const MAX_MESSAGE_LENGTH = 2000;
   const MAX_MESSAGES_PER_BATCH = 10;
@@ -28,6 +28,11 @@
     [SUSPICIOUS_VERDICT]: "2px dashed #e37400",
   });
   const MESSAGE_OUTLINE = "2px solid #d93025";
+  const FACEBOOK_REDIRECT_HOSTS = Object.freeze(["l.facebook.com", "lm.facebook.com", "l.messenger.com"]);
+  const FACEBOOK_REDIRECT_PATH = "/l.php";
+  const FACEBOOK_REDIRECT_TARGET = "u";
+  const WEB_PROTOCOLS = Object.freeze(["http:", "https:"]);
+  const CLICK_EVENTS = Object.freeze(["click", "auxclick"]);
   const WARNING_STYLES = `
     :host { all: initial; }
     .stack { position: fixed; right: 16px; bottom: 16px; z-index: 2147483647; display: flex; flex-direction: column; gap: 8px; max-width: 360px; font: 14px/1.4 system-ui, sans-serif; }
@@ -44,7 +49,7 @@
   const QUOTE_LENGTH = 90;
 
   const seenTexts = new Set();
-  const inspectedAnchors = new WeakSet();
+  const inspectedHrefs = new WeakMap();
   const pendingRoots = new Set();
   let scanTimer = null;
   let stopped = false;
@@ -55,10 +60,11 @@
   }
 
   function rememberText(text) {
-    if (seenTexts.size >= MAX_TRACKED_TEXTS) {
-      seenTexts.clear();
-    }
+    seenTexts.delete(text);
     seenTexts.add(text);
+    if (seenTexts.size > MAX_TRACKED_TEXTS) {
+      seenTexts.delete(seenTexts.values().next().value);
+    }
   }
 
   function isIgnored(element) {
@@ -73,7 +79,11 @@
       if (hasSelectedDescendant.has(element)) {
         continue;
       }
-      const text = normalizeText(element.textContent);
+      const rawText = element.textContent ?? "";
+      if (rawText.length < MIN_MESSAGE_LENGTH || rawText.length > MAX_MESSAGE_LENGTH * 2) {
+        continue;
+      }
+      const text = normalizeText(rawText);
       if (text.length < MIN_MESSAGE_LENGTH || text.length > MAX_MESSAGE_LENGTH) {
         continue;
       }
@@ -91,20 +101,29 @@
     return blocks.reverse();
   }
 
+  function unwrapRedirect(url) {
+    const target = url.searchParams.get(FACEBOOK_REDIRECT_TARGET);
+    const isRedirect = FACEBOOK_REDIRECT_HOSTS.includes(url.hostname) && url.pathname === FACEBOOK_REDIRECT_PATH && target;
+    return isRedirect ? new URL(target) : url;
+  }
+
+  function inspectableLink(anchor) {
+    try {
+      const url = unwrapRedirect(new URL(anchor.href));
+      const isExternalWebLink = WEB_PROTOCOLS.includes(url.protocol) && url.host !== location.host;
+      return isExternalWebLink ? url.origin + url.pathname : null;
+    } catch {
+      return null;
+    }
+  }
+
   function externalAnchors(root) {
     const anchors = root.matches?.("a[href]") ? [root] : [];
     anchors.push(...root.querySelectorAll("a[href]"));
-    return anchors.filter((anchor) => {
-      if (inspectedAnchors.has(anchor) || anchor.closest(OWN_UI_SELECTOR)) {
-        return false;
-      }
-      try {
-        const url = new URL(anchor.href);
-        return (url.protocol === "http:" || url.protocol === "https:") && url.host !== location.host;
-      } catch {
-        return false;
-      }
-    });
+    return anchors
+      .filter((anchor) => inspectedHrefs.get(anchor) !== anchor.href && !anchor.closest(OWN_UI_SELECTOR))
+      .map((anchor) => ({ anchor, link: inspectableLink(anchor) }))
+      .filter((candidate) => candidate.link !== null);
   }
 
   async function sendToExtension(message) {
@@ -133,16 +152,16 @@
     }
   }
 
-  async function inspectLinks(anchors) {
-    anchors.forEach((anchor) => inspectedAnchors.add(anchor));
-    const urls = [...new Set(anchors.map((anchor) => anchor.href))];
+  async function inspectLinks(candidates) {
+    candidates.forEach(({ anchor }) => inspectedHrefs.set(anchor, anchor.href));
+    const urls = [...new Set(candidates.map((candidate) => candidate.link))];
     if (urls.length === 0) {
       return;
     }
     const warnings = await sendToExtension({ type: MESSAGE_TYPES.inspectLinks, urls });
     const warningsByUrl = new Map((warnings ?? []).map((warning) => [warning.url, warning]));
-    anchors.forEach((anchor) => {
-      const warning = warningsByUrl.get(anchor.href);
+    candidates.forEach(({ anchor, link }) => {
+      const warning = warningsByUrl.get(link);
       if (warning) {
         markLink(anchor, warning);
       }
@@ -221,6 +240,9 @@
         return;
       }
       const warning = await sendToExtension({ type: MESSAGE_TYPES.classifyMessage, text: block.text });
+      if (warning === null) {
+        seenTexts.delete(block.text);
+      }
       if (warning?.isScam) {
         showMessageWarning(block, warning);
       }
@@ -228,14 +250,19 @@
   }
 
   function newMessageBlocks(roots) {
-    const blocks = roots.flatMap(messageBlocks).filter((block) => !seenTexts.has(block.text));
+    const unseenBlocks = roots.flatMap(messageBlocks).filter((block) => !seenTexts.has(block.text));
+    const uniqueBlocks = [...new Map(unseenBlocks.map((block) => [block.text, block])).values()];
+    const blocks = uniqueBlocks.slice(-MAX_MESSAGES_PER_BATCH);
     blocks.forEach((block) => rememberText(block.text));
-    return blocks.slice(-MAX_MESSAGES_PER_BATCH);
+    return blocks;
   }
 
   function scanPending() {
     scanTimer = null;
-    const roots = [...pendingRoots].filter((root) => root.isConnected);
+    const connectedRoots = [...pendingRoots].filter((root) => root.isConnected);
+    const roots = connectedRoots.filter(
+      (root) => !connectedRoots.some((other) => other !== root && other.contains(root)),
+    );
     pendingRoots.clear();
     if (stopped || roots.length === 0) {
       return;
@@ -251,8 +278,14 @@
     }
   }
 
+  function dangerousAnchorOf(event) {
+    return event
+      .composedPath()
+      .find((node) => node instanceof Element && node.matches(`a[${VERDICT_ATTRIBUTE}="${DANGEROUS_VERDICT}"]`));
+  }
+
   function confirmDangerousClick(event) {
-    const anchor = event.target instanceof Element ? event.target.closest(`a[${VERDICT_ATTRIBUTE}="${DANGEROUS_VERDICT}"]`) : null;
+    const anchor = dangerousAnchorOf(event);
     if (anchor?.dataset.scambodiaConfirm && !window.confirm(anchor.dataset.scambodiaConfirm)) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -274,7 +307,8 @@
   function stop() {
     stopped = true;
     observer.disconnect();
-    document.removeEventListener("click", confirmDangerousClick, true);
+    CLICK_EVENTS.forEach((eventName) => document.removeEventListener(eventName, confirmDangerousClick, true));
+    delete globalThis[SCANNER_MARKER];
   }
 
   function start() {
@@ -284,7 +318,7 @@
     messageBlocks(document.body).forEach((block) => rememberText(block.text));
     inspectLinks(externalAnchors(document.body));
     observer.observe(document.body, { childList: true, subtree: true });
-    document.addEventListener("click", confirmDangerousClick, true);
+    CLICK_EVENTS.forEach((eventName) => document.addEventListener(eventName, confirmDangerousClick, true));
   }
 
   start();

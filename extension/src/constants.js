@@ -24,9 +24,10 @@ export const STORAGE_KEYS = Object.freeze({
   apiBaseUrl: "apiBaseUrl",
   pendingText: "pendingText",
   scanOrigins: "scanOrigins",
+  customScanSites: "customScanSites",
 });
 export const MAX_LINKS_PER_REQUEST = 50;
-export const MAX_LINK_LENGTH = 2048;
+export const MAX_LINK_LENGTH = 500;
 export const SCANNER_SCRIPT_ID = "scambodia-page-scanner";
 export const SCANNER_SCRIPT_FILE = "src/content/page-scanner.js";
 export const SCAN_MESSAGE_TYPES = Object.freeze({

@@ -2,7 +2,14 @@ import { normalizeApiBaseUrl } from "./classification.js";
 import { CHAT_SITE_PRESETS } from "./constants.js";
 import { ERROR_MESSAGES, PAGE_SCAN_TEXT, UI_TEXT } from "./messages.js";
 import { loadApiBaseUrl, saveApiBaseUrl } from "./settings.js";
-import { loadScanOrigins, normalizeSiteOrigin, originPattern, saveScanOrigins } from "./site-settings.js";
+import {
+  loadCustomSites,
+  loadScanOrigins,
+  normalizeSiteOrigin,
+  originPattern,
+  saveCustomSites,
+  saveScanOrigins,
+} from "./site-settings.js";
 
 const input = document.getElementById("api-base-url");
 const status = document.getElementById("status");
@@ -11,6 +18,7 @@ const customSiteInput = document.getElementById("custom-site");
 const scanStatus = document.getElementById("scan-status");
 const addSiteButton = document.getElementById("add-site");
 let enabledOrigins = new Set(await loadScanOrigins());
+let customSites = await loadCustomSites();
 
 async function save() {
   const apiBaseUrl = normalizeApiBaseUrl(input.value);
@@ -66,7 +74,7 @@ function siteToggle(name, origin) {
 
 function renderSites() {
   const presetOrigins = new Set(CHAT_SITE_PRESETS.map((preset) => preset.origin));
-  const customOrigins = [...enabledOrigins].filter((origin) => !presetOrigins.has(origin));
+  const customOrigins = [...new Set([...customSites, ...enabledOrigins])].filter((origin) => !presetOrigins.has(origin)).sort();
   sitesContainer.replaceChildren(
     ...CHAT_SITE_PRESETS.map((preset) => siteToggle(preset.name, preset.origin)),
     ...customOrigins.map((origin) => siteToggle(new URL(origin).host, origin)),
@@ -79,6 +87,7 @@ async function addCustomSite() {
     scanStatus.textContent = PAGE_SCAN_TEXT.invalidSite;
     return;
   }
+  customSites = await saveCustomSites([...customSites, origin]);
   await enableSite(origin);
   customSiteInput.value = "";
   renderSites();

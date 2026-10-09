@@ -8,20 +8,22 @@ export async function grantedOrigins(origins, permissions = chrome.permissions) 
 
 export async function syncPageScanner(origins, { scripting = chrome.scripting, permissions = chrome.permissions } = {}) {
   const enabledOrigins = await grantedOrigins(origins, permissions);
-  const registered = await scripting.getRegisteredContentScripts({ ids: [SCANNER_SCRIPT_ID] });
-  if (registered.length > 0) {
-    await scripting.unregisterContentScripts({ ids: [SCANNER_SCRIPT_ID] });
-  }
-  if (enabledOrigins.length > 0) {
-    await scripting.registerContentScripts([
-      {
-        id: SCANNER_SCRIPT_ID,
-        matches: enabledOrigins.map(originPattern),
-        js: [SCANNER_SCRIPT_FILE],
-        runAt: "document_idle",
-        persistAcrossSessions: true,
-      },
-    ]);
+  const isRegistered = (await scripting.getRegisteredContentScripts({ ids: [SCANNER_SCRIPT_ID] })).length > 0;
+  const script = {
+    id: SCANNER_SCRIPT_ID,
+    matches: enabledOrigins.map(originPattern),
+    js: [SCANNER_SCRIPT_FILE],
+    runAt: "document_idle",
+    persistAcrossSessions: true,
+  };
+  if (enabledOrigins.length === 0) {
+    if (isRegistered) {
+      await scripting.unregisterContentScripts({ ids: [SCANNER_SCRIPT_ID] });
+    }
+  } else if (isRegistered) {
+    await scripting.updateContentScripts([script]);
+  } else {
+    await scripting.registerContentScripts([script]);
   }
   return enabledOrigins;
 }

@@ -198,7 +198,7 @@ File xuất có `source = contributed`, `annotator` để trống; duyệt và s
 
 ### `POST /api/v1/link-inspections`
 
-Kiểm tra nhanh nhiều link một lúc (tối đa 50, mỗi link tối đa 2048 ký tự), không gọi model AI. Extension dùng endpoint này để tô màu link trên trang chat.
+Kiểm tra nhanh nhiều link một lúc (tối đa 50, mỗi link tối đa 500 ký tự để vừa giới hạn 32 KB của body), không gọi model AI. Extension dùng endpoint này để tô màu link trên trang chat.
 
 ```bash
 curl -s localhost:8080/api/v1/link-inspections -H 'content-type: application/json' \

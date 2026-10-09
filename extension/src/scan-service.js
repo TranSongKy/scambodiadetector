@@ -41,14 +41,16 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function isInspectableUrl(url) {
-  if (typeof url !== "string" || url.length === 0 || url.length > MAX_LINK_LENGTH) {
-    return false;
+export function inspectableLink(url) {
+  if (typeof url !== "string") {
+    return null;
   }
   try {
-    return WEB_PROTOCOLS.includes(new URL(url).protocol);
+    const parsed = new URL(url);
+    const link = parsed.origin + parsed.pathname;
+    return WEB_PROTOCOLS.includes(parsed.protocol) && link.length <= MAX_LINK_LENGTH ? link : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -87,6 +89,7 @@ export function createScanService({
 } = {}) {
   const messageCache = new BoundedCache(SCAN_CACHE_SIZE);
   const linkCache = new BoundedCache(SCAN_CACHE_SIZE);
+  const pendingMessages = new Map();
   let queue = Promise.resolve();
   let nextAllowedAt = 0;
 
@@ -120,18 +123,33 @@ export function createScanService({
     if (cached) {
       return cached;
     }
-    const result = await throttled(async () => classifyText(await loadBaseUrl(), maskedText));
-    const warning = toMessageWarning(result);
-    messageCache.set(maskedText, warning);
-    return warning;
+    if (!pendingMessages.has(maskedText)) {
+      const request = throttled(async () => classifyText(await loadBaseUrl(), maskedText))
+        .then((result) => {
+          const warning = toMessageWarning(result);
+          messageCache.set(maskedText, warning);
+          return warning;
+        })
+        .finally(() => pendingMessages.delete(maskedText));
+      pendingMessages.set(maskedText, request);
+    }
+    return pendingMessages.get(maskedText);
+  }
+
+  async function inspectBatch(batch) {
+    try {
+      const inspections = await throttled(async () => inspect(await loadBaseUrl(), batch));
+      inspections.forEach((inspection) => linkCache.set(inspection.url, toLinkWarning(inspection)));
+    } catch {
+      return;
+    }
   }
 
   async function checkLinks(urls) {
-    const uniqueUrls = [...new Set(urls)].filter(isInspectableUrl);
+    const uniqueUrls = [...new Set(urls.map(inspectableLink).filter(Boolean))];
     const uncached = uniqueUrls.filter((url) => linkCache.get(url) === undefined);
     for (const batch of chunk(uncached, MAX_LINKS_PER_REQUEST)) {
-      const inspections = await throttled(async () => inspect(await loadBaseUrl(), batch));
-      inspections.forEach((inspection) => linkCache.set(inspection.url, toLinkWarning(inspection)));
+      await inspectBatch(batch);
     }
     return uniqueUrls.map((url) => linkCache.get(url)).filter(Boolean);
   }

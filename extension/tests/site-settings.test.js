@@ -3,7 +3,14 @@ import { test } from "node:test";
 
 import { SCANNER_SCRIPT_FILE, SCANNER_SCRIPT_ID, STORAGE_KEYS } from "../src/constants.js";
 import { injectIntoOpenTabs, syncPageScanner } from "../src/scanner-registration.js";
-import { loadScanOrigins, normalizeSiteOrigin, originPattern, saveScanOrigins } from "../src/site-settings.js";
+import {
+  loadCustomSites,
+  loadScanOrigins,
+  normalizeSiteOrigin,
+  originPattern,
+  saveCustomSites,
+  saveScanOrigins,
+} from "../src/site-settings.js";
 
 function fakeStorage() {
   const values = {};
@@ -15,12 +22,13 @@ function fakeStorage() {
 }
 
 function fakeScripting(registered = []) {
-  const calls = { registered: [], unregistered: [], executed: [] };
+  const calls = { registered: [], updated: [], unregistered: [], executed: [] };
   return {
     calls,
     getRegisteredContentScripts: async () => registered,
     unregisterContentScripts: async (filter) => calls.unregistered.push(filter),
     registerContentScripts: async (scripts) => calls.registered.push(...scripts),
+    updateContentScripts: async (scripts) => calls.updated.push(...scripts),
     executeScript: async (injection) => calls.executed.push(injection),
   };
 }
@@ -44,16 +52,33 @@ test("scan origins are saved sorted without duplicates", async () => {
 });
 
 test("syncPageScanner registers the scanner only for origins with granted permission", async () => {
-  const scripting = fakeScripting([{ id: SCANNER_SCRIPT_ID }]);
+  const scripting = fakeScripting();
   const permissions = { contains: async ({ origins }) => origins[0] !== originPattern("https://mail.google.com") };
 
   const enabled = await syncPageScanner(["https://chat.zalo.me", "https://mail.google.com"], { scripting, permissions });
 
   assert.deepEqual(enabled, ["https://chat.zalo.me"]);
-  assert.deepEqual(scripting.calls.unregistered, [{ ids: [SCANNER_SCRIPT_ID] }]);
   assert.equal(scripting.calls.registered.length, 1);
   assert.deepEqual(scripting.calls.registered[0].matches, ["https://chat.zalo.me/*"]);
   assert.deepEqual(scripting.calls.registered[0].js, [SCANNER_SCRIPT_FILE]);
+  assert.deepEqual(scripting.calls.unregistered, []);
+});
+
+test("syncPageScanner updates an existing registration instead of registering a duplicate", async () => {
+  const scripting = fakeScripting([{ id: SCANNER_SCRIPT_ID }]);
+
+  await syncPageScanner(["https://web.telegram.org"], { scripting, permissions: { contains: async () => true } });
+
+  assert.deepEqual(scripting.calls.registered, []);
+  assert.deepEqual(scripting.calls.updated[0].matches, ["https://web.telegram.org/*"]);
+});
+
+test("syncPageScanner unregisters the scanner when the last site is disabled", async () => {
+  const scripting = fakeScripting([{ id: SCANNER_SCRIPT_ID }]);
+
+  await syncPageScanner([], { scripting, permissions: { contains: async () => true } });
+
+  assert.deepEqual(scripting.calls.unregistered, [{ ids: [SCANNER_SCRIPT_ID] }]);
 });
 
 test("syncPageScanner leaves nothing registered when no site is enabled", async () => {
@@ -80,3 +105,14 @@ test("injectIntoOpenTabs runs the scanner in already open tabs of enabled sites"
     [7, 9],
   );
 });
+
+test("custom sites are stored separately so a disabled custom site stays listed", async () => {
+  const storage = fakeStorage();
+
+  await saveCustomSites(["https://chat.example.vn", "https://chat.example.vn"], storage);
+  await saveScanOrigins([], storage);
+
+  assert.deepEqual(await loadCustomSites(storage), ["https://chat.example.vn"]);
+  assert.deepEqual(await loadScanOrigins(storage), []);
+});
+

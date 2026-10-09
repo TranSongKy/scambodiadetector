@@ -15,13 +15,29 @@ export function originPattern(origin) {
   return `${origin}/*`;
 }
 
-export async function loadScanOrigins(storage = chrome.storage.sync) {
-  const stored = await storage.get(STORAGE_KEYS.scanOrigins);
-  return stored[STORAGE_KEYS.scanOrigins] ?? [];
+async function loadOriginList(key, storage) {
+  const stored = await storage.get(key);
+  return stored[key] ?? [];
 }
 
-export async function saveScanOrigins(origins, storage = chrome.storage.sync) {
+async function saveOriginList(key, origins, storage) {
   const uniqueOrigins = [...new Set(origins)].sort();
-  await storage.set({ [STORAGE_KEYS.scanOrigins]: uniqueOrigins });
+  await storage.set({ [key]: uniqueOrigins });
   return uniqueOrigins;
+}
+
+export function loadScanOrigins(storage = chrome.storage.sync) {
+  return loadOriginList(STORAGE_KEYS.scanOrigins, storage);
+}
+
+export function saveScanOrigins(origins, storage = chrome.storage.sync) {
+  return saveOriginList(STORAGE_KEYS.scanOrigins, origins, storage);
+}
+
+export function loadCustomSites(storage = chrome.storage.sync) {
+  return loadOriginList(STORAGE_KEYS.customScanSites, storage);
+}
+
+export function saveCustomSites(origins, storage = chrome.storage.sync) {
+  return saveOriginList(STORAGE_KEYS.customScanSites, origins, storage);
 }

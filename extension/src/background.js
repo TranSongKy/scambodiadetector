@@ -6,16 +6,22 @@ import { storePendingText } from "./settings.js";
 import { loadScanOrigins } from "./site-settings.js";
 
 const scanService = createScanService();
+let scannerRefresh = Promise.resolve();
 const SCAN_HANDLERS = Object.freeze({
   [SCAN_MESSAGE_TYPES.inspectLinks]: (message) => scanService.checkLinks(message.urls ?? []),
   [SCAN_MESSAGE_TYPES.classifyMessage]: (message) => scanService.checkMessage(message.text),
 });
 
-async function refreshPageScanner({ injectOpenTabs }) {
-  const enabledOrigins = await syncPageScanner(await loadScanOrigins());
-  if (injectOpenTabs) {
-    await injectIntoOpenTabs(enabledOrigins);
-  }
+function refreshPageScanner({ injectOpenTabs }) {
+  scannerRefresh = scannerRefresh
+    .then(async () => {
+      const enabledOrigins = await syncPageScanner(await loadScanOrigins());
+      if (injectOpenTabs) {
+        await injectIntoOpenTabs(enabledOrigins);
+      }
+    })
+    .catch((error) => console.error("Scambodia: cannot update page scanner", error));
+  return scannerRefresh;
 }
 
 async function handleScanMessage(message, sender) {
@@ -48,10 +54,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!sender.tab || !(message?.type in SCAN_HANDLERS)) {
+  if (!sender.tab || !Object.hasOwn(SCAN_HANDLERS, message?.type ?? "")) {
     return false;
   }
-  handleScanMessage(message, sender).then(sendResponse);
+  handleScanMessage(message, sender)
+    .catch(() => ({ ok: false }))
+    .then(sendResponse);
   return true;
 });
 

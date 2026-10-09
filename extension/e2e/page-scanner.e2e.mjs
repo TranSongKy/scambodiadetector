@@ -74,6 +74,25 @@ async function handleRequest(request, response) {
   }
 }
 
+async function setSiteEnabled(enabled) {
+  const options = await context.newPage();
+  await options.goto(`chrome-extension://${extensionId}/src/options.html`);
+  const checkbox = options.locator(`input[data-origin="${SITE_ORIGIN}"]`);
+  if ((await checkbox.isChecked()) !== enabled) {
+    await checkbox.click();
+    const expectedStatus = enabled ? "Đã bật" : "Đã tắt";
+    await options.waitForFunction((status) => document.getElementById("scan-status").textContent.startsWith(status), expectedStatus);
+  }
+  await options.close();
+}
+
+async function openChat() {
+  const page = await context.newPage();
+  await page.goto(CHAT_URL);
+  await page.waitForSelector('#bad-link[data-scambodia-verdict="dangerous"]', { timeout: WAIT_TIMEOUT_MS });
+  return page;
+}
+
 async function addMessage(page, text) {
   await page.evaluate((messageText) => {
     const bubble = document.createElement("div");
@@ -159,3 +178,54 @@ test("clicking a dangerous link asks for confirmation and stays on the page when
   assert.equal(page.url(), CHAT_URL);
   await page.close();
 });
+
+test("text typed into rich composers is never sent", async () => {
+  const page = await openChat();
+  classifyRequests.length = 0;
+
+  await page.evaluate(() => {
+    const plainComposer = document.createElement("div");
+    plainComposer.setAttribute("contenteditable", "plaintext-only");
+    plainComposer.textContent = "Bản nháp riêng tư trong ô soạn plaintext chuyển khoản";
+    const roleComposer = document.createElement("div");
+    roleComposer.setAttribute("role", "textbox");
+    roleComposer.textContent = "Bản nháp riêng tư trong ô soạn role textbox chuyển khoản";
+    document.body.append(plainComposer, roleComposer);
+  });
+  await addMessage(page, SCAM_MESSAGE);
+  await page.locator('[data-scambodia="warnings"] .card').first().waitFor({ timeout: WAIT_TIMEOUT_MS });
+
+  assert.ok(!classifyRequests.some((text) => text.includes("Bản nháp")));
+  await page.close();
+});
+
+test("middle-clicking a dangerous link also asks for confirmation", async () => {
+  const page = await openChat();
+  const dialogs = [];
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+
+  await page.click("#bad-link", { button: "middle" });
+
+  assert.equal(dialogs.length, 1);
+  await page.close();
+});
+
+test("re-enabling a site resumes scanning in an already open tab", async () => {
+  const page = await openChat();
+  await setSiteEnabled(false);
+  await addMessage(page, "Tin nhắn trong lúc đã tắt quét tự động, chuyển khoản thử");
+  await page.waitForTimeout(2_000);
+
+  await setSiteEnabled(true);
+  await page.waitForTimeout(1_000);
+  classifyRequests.length = 0;
+  await addMessage(page, SCAM_MESSAGE.replace("5 triệu", "7 triệu"));
+  await page.locator('[data-scambodia="warnings"] .card').first().waitFor({ timeout: WAIT_TIMEOUT_MS });
+
+  assert.ok(classifyRequests.some((text) => text.includes("7 triệu")));
+  await page.close();
+});
+
