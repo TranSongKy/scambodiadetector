@@ -7,6 +7,8 @@ import {
   classify,
   describeReason,
   formatResult,
+  inspectLinks,
+  isRateLimited,
   normalizeApiBaseUrl,
   report,
   validateText,
@@ -162,4 +164,27 @@ test("manifest is valid MV3 and points to existing files", () => {
   for (const path of [manifest.background.service_worker, manifest.side_panel.default_path, manifest.options_page]) {
     assert.doesNotThrow(() => readFileSync(new URL(`../${path}`, import.meta.url)), path);
   }
+});
+
+test("inspectLinks posts the links and returns the per-link results", async () => {
+  const requests = [];
+  const results = [{ url: "https://a.example", verdict: "safe", reasons: [] }];
+  const fakeFetch = async (url, init) => {
+    requests.push({ url, body: JSON.parse(init.body) });
+    return jsonResponse(200, { results });
+  };
+
+  assert.deepEqual(await inspectLinks(API, ["https://a.example"], fakeFetch), results);
+  assert.deepEqual(requests, [{ url: `${API}/api/v1/link-inspections`, body: { urls: ["https://a.example"] } }]);
+});
+
+test("errors keep the HTTP status so callers can detect rate limiting", async () => {
+  const fakeFetch = async () => jsonResponse(429, {});
+
+  const error = await inspectLinks(API, ["https://a.example"], fakeFetch).catch((caught) => caught);
+
+  assert.ok(error instanceof ClassificationError);
+  assert.equal(error.status, 429);
+  assert.equal(isRateLimited(error), true);
+  assert.equal(isRateLimited(new Error("x")), false);
 });

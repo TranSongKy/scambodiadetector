@@ -54,3 +54,20 @@ export const REPORT_LABEL_TEXT = Object.freeze({
   [LABELS.spam]: "Quảng cáo",
   [LABELS.normal]: "Bình thường",
 });
+
+export const PAGE_SCAN_TEXT = Object.freeze({
+  messageWarningTitle: "⚠️ Tin nhắn có dấu hiệu lừa đảo",
+  dangerousLinkTitle: "⚠️ Scambodia: link nguy hiểm",
+  suspiciousLinkTitle: "Scambodia: link đáng ngờ",
+  dangerousLinkConfirm: "Scambodia cảnh báo: link này có dấu hiệu lừa đảo. Bạn vẫn muốn mở?",
+  showMessage: "Xem tin",
+  dismiss: "Đóng cảnh báo",
+  optionsHeading: "Tự động kiểm tra trên trang chat",
+  optionsHint:
+    "Chỉ chạy trên các trang bạn bật. Extension kiểm tra link trên trang và tin nhắn mới hiện ra; số điện thoại, số tài khoản, OTP, email được che ngay trên máy trước khi gửi đi.",
+  customSiteLabel: "Thêm trang khác (https://…)",
+  addSite: "Thêm",
+  invalidSite: "Địa chỉ trang phải bắt đầu bằng https://",
+  siteEnabled: "Đã bật tự động kiểm tra.",
+  siteDisabled: "Đã tắt tự động kiểm tra.",
+});

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ScamDetector.Core.Classification;
+using ScamDetector.Core.Links;
 using ScamDetector.Core.ThreatIntel;
 using ScamDetector.Core.Urls;
 using ScamDetector.Infrastructure.Llm;
@@ -42,6 +43,7 @@ public static class ScamDetectorServiceCollectionExtensions
             CreateModelChain(provider, onnxModelOptions, llmModelOptions, contentRootPath)));
         services.AddSingleton<IUrlInspector, RuleBasedUrlInspector>();
         services.AddSingleton<IMessageClassifier, MessageClassifier>();
+        services.AddSingleton<ILinkInspectionService, LinkInspectionService>();
 
         return services;
     }
