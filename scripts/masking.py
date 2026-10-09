@@ -63,7 +63,7 @@ def restore_obfuscated_urls(text: str) -> str:
 
 
 def has_url(text: str) -> bool:
-    return URL_PLACEHOLDER in text or URL_PATTERN.search(text) is not None
+    return URL_PLACEHOLDER in text or URL_PATTERN.search(restore_obfuscated_urls(text)) is not None
 
 
 def mask_email(text: str) -> str:
@@ -124,6 +124,7 @@ def mask(text: str) -> str:
 
 def find_maskable_pii(text: str) -> list[str]:
     found: list[str] = []
+    text = restore_obfuscated_urls(text)
     for name, step in MASKING_STEPS:
         masked_text = step(text)
         if masked_text != text:
