@@ -1,3 +1,5 @@
+using ScamDetector.Core.Urls;
+
 namespace ScamDetector.Core.ThreatIntel;
 
 public sealed record ThreatMatch(IReadOnlyList<string> BlocklistedDomains, TemplateMatch? Template)
@@ -5,6 +7,8 @@ public sealed record ThreatMatch(IReadOnlyList<string> BlocklistedDomains, Templ
     public static readonly ThreatMatch None = new([], null);
 
     public const double BlocklistedDomainConfidence = 0.99;
+
+    public IReadOnlyList<UrlFinding> BrandImpersonations { get; init; } = [];
 
     public bool HasBlocklistedDomain => BlocklistedDomains.Count > 0;
 

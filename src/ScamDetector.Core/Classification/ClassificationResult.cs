@@ -17,12 +17,13 @@ public sealed record ClassificationResult(MessageLabel Label, double Confidence,
         ThreatMatch threat,
         double scamThreshold)
     {
-        var scamProbability = prediction.ProbabilityOf(MessageLabel.Scam);
+        var modelScamProbability = prediction.ProbabilityOf(MessageLabel.Scam);
+        var scamProbability = UrlRisk.CombineWithModel(modelScamProbability, UrlRisk.Combine(urlFindings));
         var reasons = new List<string>();
 
         if (scamProbability >= scamThreshold || threat.IsStrongSignal)
         {
-            if (scamProbability >= scamThreshold)
+            if (modelScamProbability >= scamThreshold)
                 reasons.Add(ClassificationReasons.ModelPredictedScam);
             reasons.AddRange(threat.Reasons());
             reasons.AddRange(urlFindings.Select(finding => finding.Reason));
@@ -38,6 +39,9 @@ public sealed record ClassificationResult(MessageLabel Label, double Confidence,
 
         return new ClassificationResult(label, prediction.ProbabilityOf(label), reasons);
     }
+
+    public static ClassificationResult FromUrlSignals(IReadOnlyList<UrlFinding> urlFindings) =>
+        new(MessageLabel.Scam, UrlRisk.Combine(urlFindings), [.. urlFindings.Select(finding => finding.Reason)]);
 
     public static ClassificationResult FromThreatSignals(ThreatMatch threat, IReadOnlyList<UrlFinding> urlFindings) =>
         new(

@@ -16,6 +16,7 @@ ID_KEYWORD_WINDOW = 25
 TRAILING_URL_PUNCTUATION = ".,;:!?)]}\"'"
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
+INVISIBLE_CHARACTERS_PATTERN = re.compile("[\u00ad\u200b-\u200d\u2060\ufeff]")
 URL_PATTERN = re.compile(
     rf"(?:https?://|www\.)[^\s<>\"]+|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
     rf"(?-i:(?:{URL_TOP_LEVEL_DOMAINS})|(?:{URL_TOP_LEVEL_DOMAINS.upper()}))\b(?:/[^\s<>\"]*)?",
@@ -48,7 +49,8 @@ ACCOUNT_PATTERN = re.compile(
 
 
 def normalize_text(text: str) -> str:
-    return WHITESPACE_PATTERN.sub(" ", unicodedata.normalize("NFC", text)).strip()
+    visible_text = INVISIBLE_CHARACTERS_PATTERN.sub("", unicodedata.normalize("NFC", text))
+    return WHITESPACE_PATTERN.sub(" ", visible_text).strip()
 
 
 def has_url(text: str) -> bool:

@@ -23,10 +23,13 @@ public sealed class MessageClassifier(
             return Result.Failure<ClassificationResult>(ClassificationErrors.TextTooLong);
 
         var maskedText = ModelInputMasker.Mask(normalizedText);
-        var urlFindings = await urlInspector.InspectAsync(normalizedText, cancellationToken);
+        var inspectedFindings = await urlInspector.InspectAsync(normalizedText, cancellationToken);
         var threat = _threatIntelligence.Match(normalizedText, maskedText);
+        IReadOnlyList<UrlFinding> urlFindings = [.. inspectedFindings, .. threat.BrandImpersonations];
         if (threat.IsStrongSignal)
             return ClassificationResult.FromThreatSignals(threat, urlFindings);
+        if (!model.IsAvailable && UrlRisk.Combine(urlFindings) >= options.ScamThreshold)
+            return ClassificationResult.FromUrlSignals(urlFindings);
 
         var prediction = await model.PredictAsync(maskedText, cancellationToken);
         return ClassificationResult.From(prediction, urlFindings, threat, options.ScamThreshold);

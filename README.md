@@ -161,8 +161,8 @@ curl -X POST http://localhost:8080/api/v1/classifications \
 | Trường | Ý nghĩa |
 |---|---|
 | `label` | `scam`, `spam` hoặc `normal`. Kết luận `scam` khi xác suất ≥ `Classification:ScamThreshold` (mặc định 0.7), hoặc khi tin có link thuộc danh sách tên miền lừa đảo, hoặc trùng văn mẫu lừa đảo đã biết (xem [Cập nhật dữ liệu lừa đảo](#cập-nhật-dữ-liệu-lừa-đảo)) |
-| `confidence` | Xác suất của nhãn được chọn (khi trùng danh sách chặn: 0.99; khi trùng văn mẫu: tỉ lệ trùng nếu cao hơn xác suất model) |
-| `reasons` | `model_predicted_scam`, `model_predicted_spam`, `scam_probability_below_threshold`, `url_shortener`, `url_ip_address_host`, `url_punycode`, `url_suspicious_tld`, `url_blocklisted`, `matches_known_scam_template` |
+| `confidence` | Xác suất của nhãn được chọn. Với `scam`: xác suất của model đã cộng rủi ro từ link (quyết định 025); khi trùng danh sách chặn: 0.99; khi trùng văn mẫu: tỉ lệ trùng nếu cao hơn |
+| `reasons` | `model_predicted_scam`, `model_predicted_spam`, `scam_probability_below_threshold`, `url_shortener`, `url_ip_address_host`, `url_punycode`, `url_suspicious_tld`, `url_obfuscated`, `url_brand_impersonation`, `url_blocklisted`, `matches_known_scam_template` |
 
 Lỗi trả về theo RFC 9457 (`application/problem+json`):
 

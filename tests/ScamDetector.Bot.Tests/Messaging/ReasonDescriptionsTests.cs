@@ -16,6 +16,8 @@ public sealed class ReasonDescriptionsTests
         UrlReasons.IpAddressHost,
         UrlReasons.Punycode,
         UrlReasons.SuspiciousTopLevelDomain,
+        UrlReasons.Obfuscated,
+        UrlReasons.BrandImpersonation,
         ThreatReasons.BlocklistedDomain,
         ThreatReasons.KnownScamTemplate,
     };
